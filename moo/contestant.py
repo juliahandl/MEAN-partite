@@ -75,18 +75,24 @@ class ComDetFastGreedy(CommunityDetector):
         upper = vertices.count(1)
         n_vertices = len(self.graph_.vs)
         ground_truth = self.graph_.vs['GT']
+        proj0 = [i for i, val in enumerate(vertices) if val == 0]
+        proj1 = [i for i, val in enumerate(vertices) if val == 1]
         graph_proj1, graph_proj2 = self.graph_.bipartite_projection(multiplicity=True)
         res_dendo = self.graph_.community_fastgreedy(**self.params_)
-        
+       
         # num_clusters = min(self.num_clusters_+ 1, len(self.graph_.vs))
         min_num_clusters = self.min_num_clusters_
         max_num_clusters = min(self.max_num_clusters_, len(self.graph_.vs)) + 1
         
         for k in range(min_num_clusters, max_num_clusters):
             vx_clustering = res_dendo.as_clustering(k)
+            proj0_labels=[vx_clustering.membership[i] for i in proj0]
+            proj1_labels=[vx_clustering.membership[i] for i in proj1]
             modularity_score = self.graph_.modularity(vx_clustering)
-            modularity_score_1 = graph_proj1.modularity(vx_clustering.membership[0:lower], weights=graph_proj1.es['weight'])
-            modularity_score_2 = graph_proj2.modularity(vx_clustering.membership[lower:n_vertices], weights=graph_proj2.es['weight'])
+            # modularity_score_1 = graph_proj1.modularity(vx_clustering.membership[0:lower], weights=graph_proj1.es['weight'])
+            # modularity_score_2 = graph_proj2.modularity(vx_clustering.membership[lower:n_vertices], weights=graph_proj2.es['weight'])
+            modularity_score_1 = graph_proj1.modularity(proj0_labels, weights=graph_proj1.es['weight'])
+            modularity_score_2 = graph_proj2.modularity(proj0_labels, weights=graph_proj2.es['weight'])
             adj_rand_index = adjusted_rand_score(ground_truth, vx_clustering.membership)
             result = dict(
                 name=self.name_,
@@ -137,6 +143,8 @@ class ComDetEdgeBetweenness(CommunityDetector):
         upper = vertices.count(1)
         n_vertices = len(self.graph_.vs)
         ground_truth = self.graph_.vs['GT']
+        proj0 = [i for i, val in enumerate(vertices) if val == 0]
+        proj1 = [i for i, val in enumerate(vertices) if val == 1]
         graph_proj1, graph_proj2 = self.graph_.bipartite_projection(multiplicity=True)
         res_dendo = self.graph_.community_edge_betweenness(**self.params_)
 
@@ -146,9 +154,13 @@ class ComDetEdgeBetweenness(CommunityDetector):
         
         for k in range(min_num_clusters, max_num_clusters):
             vx_clustering = res_dendo.as_clustering(k)
+            proj0_labels=[vx_clustering.membership[i] for i in proj0]
+            proj1_labels=[vx_clustering.membership[i] for i in proj1]
             modularity_score = self.graph_.modularity(vx_clustering)
-            modularity_score_1 = graph_proj1.modularity(vx_clustering.membership[0:lower], weights=graph_proj1.es['weight'])
-            modularity_score_2 = graph_proj2.modularity(vx_clustering.membership[lower:n_vertices], weights=graph_proj2.es['weight'])
+            # modularity_score_1 = graph_proj1.modularity(vx_clustering.membership[0:lower], weights=graph_proj1.es['weight'])
+            # modularity_score_2 = graph_proj2.modularity(vx_clustering.membership[lower:n_vertices], weights=graph_proj2.es['weight'])
+            modularity_score_1 = graph_proj1.modularity(proj0_labels, weights=graph_proj1.es['weight'])
+            modularity_score_2 = graph_proj2.modularity(proj0_labels, weights=graph_proj2.es['weight'])
             adj_rand_index = adjusted_rand_score(ground_truth, vx_clustering.membership)
             result = dict(
                 name=self.name_,
@@ -200,6 +212,8 @@ class ComDetWalkTrap(CommunityDetector):
         upper = vertices.count(1)
         n_vertices = len(self.graph_.vs)
         ground_truth = self.graph_.vs['GT']
+        proj0 = [i for i, val in enumerate(vertices) if val == 0]
+        proj1 = [i for i, val in enumerate(vertices) if val == 1]
         graph_proj1, graph_proj2 = self.graph_.bipartite_projection(multiplicity=True)
         res_dendo = self.graph_.community_walktrap(**self.params_) #? steps changed
 
@@ -209,9 +223,13 @@ class ComDetWalkTrap(CommunityDetector):
         
         for k in range(min_num_clusters, max_num_clusters):
             vx_clustering = res_dendo.as_clustering(k)
+            proj0_labels=[vx_clustering.membership[i] for i in proj0]
+            proj1_labels=[vx_clustering.membership[i] for i in proj1]
             modularity_score = self.graph_.modularity(vx_clustering)
-            modularity_score_1 = graph_proj1.modularity(vx_clustering.membership[0:lower], weights=graph_proj1.es['weight'])
-            modularity_score_2 = graph_proj2.modularity(vx_clustering.membership[lower:n_vertices], weights=graph_proj2.es['weight'])
+            # modularity_score_1 = graph_proj1.modularity(vx_clustering.membership[0:lower], weights=graph_proj1.es['weight'])
+            # modularity_score_2 = graph_proj2.modularity(vx_clustering.membership[lower:n_vertices], weights=graph_proj2.es['weight'])
+            modularity_score_1 = graph_proj1.modularity(proj0_labels, weights=graph_proj1.es['weight'])
+            modularity_score_2 = graph_proj2.modularity(proj0_labels, weights=graph_proj2.es['weight'])
             adj_rand_index = adjusted_rand_score(ground_truth, vx_clustering.membership)
             result = dict(
                 name=self.name_,
@@ -262,14 +280,28 @@ class ComDetMultiLevel(CommunityDetector):
         upper = vertices.count(1)
         n_vertices = len(self.graph_.vs)
         ground_truth = self.graph_.vs['GT']
+        proj0 = [i for i, val in enumerate(vertices) if val == 0]
+        proj1 = [i for i, val in enumerate(vertices) if val == 1]
         graph_proj1, graph_proj2 = self.graph_.bipartite_projection(multiplicity=True)
 
         # Run Multi-Level algorithm (not implemented in igraph package)
         res1 = graph_proj1.community_multilevel(**self.params_)
         res2 = graph_proj2.community_multilevel(**self.params_)
 
-        # Cluster assignment from each projection
-        assignment=res1.membership + res2.membership
+        # # Cluster assignment from each projection
+        # assignment=res1.membership + res2.membership
+
+        # Consider perturbation in creating new membership vector
+        it1=0
+        it2=0
+        assignment = [0] * len(vertices)
+        for vit in range(0, len(vertices)):
+            if vertices[vit] == 0:
+                assignment[vit] = res1.membership[it1]
+                it1=it1+1
+            else:
+                assignment[vit] = res2.membership[it2]
+                it2=it2+1
 
         k1 = max(res1.membership) + 1
         k2 = max(res2.membership) + 1
@@ -280,6 +312,13 @@ class ComDetMultiLevel(CommunityDetector):
             #print(edges[ei],edges[ei][0],edges[ei][1])
             index1 = assignment[edges[ei][0]] # Get community index of the edge's source vertex in the first one-mode projection
             index2 = k1 + assignment[edges[ei][1]] # Get community index of the edge's target vertex in the second one-mode projection # Why assigning different communitites to one vertex? A guarantee that the 2nd vertex of each edge belongs to the second one-mode projection?
+            if vertices[edges[ei][0]] == 0: # a (0,1) edge
+                index1=assignment[edges[ei][0]]
+                index2=k1+assignment[edges[ei][1]]
+            else: # a (1,0) edge
+                index1=k1+assignment[edges[ei][0]]
+                index2=assignment[edges[ei][1]]
+
             # print(index1,index2)
             d[index1][index2] += 1 # Update matrix item
             d[index2][index1] += 1 # Update matrix item
@@ -298,15 +337,26 @@ class ComDetMultiLevel(CommunityDetector):
 
             newlabels = np.zeros(n_vertices)
 
-            for v in range(0,lower):
-                newlabels[v] = labels[assignment[v]]
+            # for v in range(0,lower):
+            #     newlabels[v] = labels[assignment[v]]
 
-            for v in range(lower,n_vertices):
-                newlabels[v] = labels[k1 + assignment[v]]
+            # for v in range(lower,n_vertices):
+            #     newlabels[v] = labels[k1 + assignment[v]]
 
+            for v in range(0,n_vertices):
+                if vertices[v] == 0:
+                    newlabels[v] = labels[assignment[v]]
+                else:
+                    newlabels[v] = labels[k1+assignment[v]]
+
+            proj0_labels=[newlabels[i] for i in proj0]
+            proj1_labels=[newlabels[i] for i in proj1]
+            
             modularity_score = self.graph_.modularity(newlabels)
-            modularity_score_1 = graph_proj1.modularity(newlabels[0:lower], weights=graph_proj1.es['weight'])
-            modularity_score_2 = graph_proj2.modularity(newlabels[lower:n_vertices], weights=graph_proj2.es['weight'])
+            # modularity_score_1 = graph_proj1.modularity(newlabels[0:lower], weights=graph_proj1.es['weight'])
+            # modularity_score_2 = graph_proj2.modularity(newlabels[lower:n_vertices], weights=graph_proj2.es['weight'])
+            modularity_score_1 = graph_proj1.modularity(proj0_labels, weights=graph_proj1.es['weight'])
+            modularity_score_2 = graph_proj2.modularity(proj1_labels, weights=graph_proj2.es['weight'])
             adj_rand_index = adjusted_rand_score(ground_truth, newlabels)
             result = dict(
                     name=self.name_,

@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import igraph
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics.cluster import adjusted_rand_score
@@ -92,7 +93,7 @@ class ComDetFastGreedy(CommunityDetector):
             # modularity_score_1 = graph_proj1.modularity(vx_clustering.membership[0:lower], weights=graph_proj1.es['weight'])
             # modularity_score_2 = graph_proj2.modularity(vx_clustering.membership[lower:n_vertices], weights=graph_proj2.es['weight'])
             modularity_score_1 = graph_proj1.modularity(proj0_labels, weights=graph_proj1.es['weight'])
-            modularity_score_2 = graph_proj2.modularity(proj0_labels, weights=graph_proj2.es['weight'])
+            modularity_score_2 = graph_proj2.modularity(proj1_labels, weights=graph_proj2.es['weight'])
             adj_rand_index = adjusted_rand_score(ground_truth, vx_clustering.membership)
             result = dict(
                 name=self.name_,
@@ -160,7 +161,7 @@ class ComDetEdgeBetweenness(CommunityDetector):
             # modularity_score_1 = graph_proj1.modularity(vx_clustering.membership[0:lower], weights=graph_proj1.es['weight'])
             # modularity_score_2 = graph_proj2.modularity(vx_clustering.membership[lower:n_vertices], weights=graph_proj2.es['weight'])
             modularity_score_1 = graph_proj1.modularity(proj0_labels, weights=graph_proj1.es['weight'])
-            modularity_score_2 = graph_proj2.modularity(proj0_labels, weights=graph_proj2.es['weight'])
+            modularity_score_2 = graph_proj2.modularity(proj1_labels, weights=graph_proj2.es['weight'])
             adj_rand_index = adjusted_rand_score(ground_truth, vx_clustering.membership)
             result = dict(
                 name=self.name_,
@@ -229,7 +230,7 @@ class ComDetWalkTrap(CommunityDetector):
             # modularity_score_1 = graph_proj1.modularity(vx_clustering.membership[0:lower], weights=graph_proj1.es['weight'])
             # modularity_score_2 = graph_proj2.modularity(vx_clustering.membership[lower:n_vertices], weights=graph_proj2.es['weight'])
             modularity_score_1 = graph_proj1.modularity(proj0_labels, weights=graph_proj1.es['weight'])
-            modularity_score_2 = graph_proj2.modularity(proj0_labels, weights=graph_proj2.es['weight'])
+            modularity_score_2 = graph_proj2.modularity(proj1_labels, weights=graph_proj2.es['weight'])
             adj_rand_index = adjusted_rand_score(ground_truth, vx_clustering.membership)
             result = dict(
                 name=self.name_,
@@ -374,7 +375,7 @@ class ComDetMultiLevel(CommunityDetector):
     #     return self.results_
 
 
-class ComDetBRIM(CommunityDetector):
+class ComDetBRIMNoPert(CommunityDetector):
     def __init__(self, name= "brim", params = {'method': 'LCS', 'project': False}, min_num_clusters=1, max_num_clusters=15) -> None:
         #TODO: A range of cluster with a possibility to generate automatically (str argument)
         super().__init__(name)
@@ -411,17 +412,24 @@ class ComDetBRIM(CommunityDetector):
         ground_truth = self.graph_.vs['GT']
         graph_proj1, graph_proj2 = self.graph_.bipartite_projection(multiplicity=True)
 
-        co = condor.condor_object(edges)
-        co = condor.initial_community(co, **self.params_)
-        co = condor.brim(co)
+        net = pd.DataFrame(edges, dtype=str)
+
+        co = condor.condor_object(dataframe=net)
+        co.initial_community(**self.params_)
+        co.brim()
 
         groundtruth1 = ground_truth[0:lower]
         groundtruth2 = ground_truth[lower:n_vertices]
 
-        output1 = co["reg_memb"]
-        output1 = output1["com"].tolist()
-        output2 = co["tar_memb"]
-        output2 = output2["com"].tolist()
+        # output1 = co["reg_memb"]
+        # output1 = output1["com"].tolist()
+        # output2 = co["tar_memb"]
+        # output2 = output2["com"].tolist()
+
+        output1=co.reg_memb
+        output1=output1["com"].tolist()
+        output2 = co.tar_memb
+        output2=output2["com"].tolist()
         
         adj_rand_index_1 = adjusted_rand_score(groundtruth1, output2)
         adj_rand_index_2 = adjusted_rand_score(groundtruth2, output1)
@@ -447,6 +455,50 @@ class ComDetBRIM(CommunityDetector):
     # def get_results(self):
     #     # Returns the community detection results (dict free format)
     #     return self.results_
+
+########################################################
+#### Utility
+########################################################
+def get_best_community_solutions(df_contestants):
+    """
+    Computes the best solution metrics among the hierarchical communities computed by community detection algorithms
+    For a given algorith/graph pair, the best solution maximizes the adjusted rand index score
+    """
+    assert isinstance(df_contestants, pd.DataFrame), "df_contestants must be a data frame"
+    # columns = ['name', 'num_clusters', 'modularity_score', 'modularity_score_1', 'modularity_score_2', 'adj_rand_index', 'graph_idx']
+    columns = ['name', 'graph_idx', 'adj_rand_index']
+    assert set(columns).issubset(set(df_contestants.columns)), f"Column names must include (in any order): {columns}"
+    return df_contestants.groupby(['name', 'graph_idx'])['adj_rand_index'].max().reset_index()
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+def draw_best_community_solutions(df_best_community_solutions, ax=None):
+    """
+    Box plots the best solutions (adjusted rand index)
+    """
+    assert isinstance(df_best_community_solutions, pd.DataFrame), "df_best_community_solutions must be a data frame"
+    columns = ['name', 'adj_rand_index']
+    assert set(columns).issubset(set(df_best_community_solutions.columns)), f"Column names must include (in any order): {columns}"
+    # stats = df_best_community_solutions.groupby(['name'])['adj_rand_index'].describe().reset_index(frop=False)
+    # ax = df_best_community_solutions.boxplot(column='adj_rand_index', by='name')
+    ax = sns.boxplot(y='adj_rand_index', x='name', data=df_best_community_solutions, ax=ax)
+    return ax, df_best_community_solutions.groupby(['name'])['adj_rand_index'].describe().reset_index()
+    # # , hue=None,
+    # )
+    # sns.boxplot(
+    #     y='modularity_score_1', x='name', data=df, ax=axs[1]
+    # # , hue=None,
+    # )
+    # sns.boxplot(
+    #     y='modularity_score_2', x='name', data=df, ax=axs[2]
+    # # , hue=None,
+    # )
+    # sns.boxplot(
+    #     y='adj_rand_index', x='name', data=df, ax=axs[3]
+    # # , hue=None,
+    # )
+    # # None, order=None, hue_order=None, orient=None, color=None, palette=None, saturation=0.75, width=0.8, dodge=True, fliersize=5, linewidth=None, whis=1.5, ax=None, **kwargs)
 
 
 def test_community_detector():
@@ -474,8 +526,6 @@ def test_community_detector():
     import pandas as pd
     df = pd.DataFrame(result)
     print(df)
-
-
 
 
 if __name__ == "__main__":

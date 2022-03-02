@@ -153,3 +153,4 @@ cython_debug/
 
 _private
 _*
+.vscode/

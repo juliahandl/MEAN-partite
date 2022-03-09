@@ -297,7 +297,7 @@ if __name__ == "__main__":
     # Parallelization over potentially multiple runs (change 1 below e.g. to 30)
     for run in range(0,30):
         print(run)
-        worker1 = multiprocessing.Process(name=str(run), target=worker)
+        worker1 = multiprocessing.Process(name=str(run), target=Worker2D)
         worker1.start()
 
     # Serial

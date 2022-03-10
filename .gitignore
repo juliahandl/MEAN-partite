@@ -154,3 +154,8 @@ cython_debug/
 _private
 _*
 .vscode/
+
+# venv, temp/data files
+hichemdata_220309/
+*.zip
+bipartite/

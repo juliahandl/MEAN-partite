@@ -115,7 +115,6 @@ from pymoo.optimize import minimize
 import multiprocessing
 import time
 
-temp_results = [] # Results for all graphs, after duplicated ( per graph are removed)
 
     
 def worker3D(name):
@@ -276,8 +275,11 @@ def worker3D(name):
     df_3d_legacydata_legacycode.drop_duplicates(keep="first",inplace=True)
     # print("After duplicate removal, size :", df_3d_legacydata_legacycode.shape)
     temp_results2 = df_3d_legacydata_legacycode.values.tolist() #TODO is tolist necessary?
-    temp_results.extend(temp_results2)
+   # temp_results.extend(temp_results2)
+
     print(f"Done Processing graph {int(name)+1}")
+    # Return the results
+    return(temp_results2)
 
 # Parallelization over potentially multiple runs (change 1 below e.g. to 30)
 # for run in range(0,30):
@@ -296,8 +298,16 @@ if __name__ == "__main__":
 #        worker1 = multiprocessing.Process(name=str(run), target=Worker3D)
 #        worker1.start()
 
-    Parallel(n_jobs=8)(delayed(worker3D)(str(i)) for i in range(30))
+    temp_results = Parallel(n_jobs=7)(delayed(worker3D)(str(i)) for i in range(30))
 
+    # We get a list of returned values (i.e. a list of lists with worker3D)
+    # (Would probably be better to return a dataframe, since that's what we end up with)
+    # Convert to a single list
+    # https://stackoverflow.com/a/952952
+    def flatten(t):
+        return [item for sublist in t for item in sublist]
+     
+    all_results = flatten(temp_results)
 
     # Serial
 #    for run in range(0,30):
@@ -311,8 +321,8 @@ if __name__ == "__main__":
     print("elapsed time ", end -start)
 
     cols = ['name', 'num_clusters', 'modularity_score', 'modularity_score_1', 'modularity_score_2', 'adj_rand_index', 'graph_idx']
-    df_3d_legacydata_legacycode = pd.DataFrame(columns=cols, data=temp_results)
-    #path = './_temp'
+    df_3d_legacydata_legacycode = pd.DataFrame(columns=cols, data=all_results)
+    # path = './_temp'
     os.makedirs(path, exist_ok=True)
     df_3d_legacydata_legacycode.to_csv(os.path.join(path, '3d_legacydata_legacycode.csv'), index=None)
     df_3d_legacydata_legacycode.shape

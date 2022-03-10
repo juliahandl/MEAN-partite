@@ -1,6 +1,8 @@
 # path = "/Users/mcdicjh2/Desktop/gecco22/"
-path = "./_temp/data_2_shuffled/"
+#path = "./_temp/data_2_shuffled/"
+path = "./hichemdata_220309/data_2_shuffled/"
 from sklearn.metrics.cluster import adjusted_rand_score
+from joblib import Parallel, delayed
 
 # Recursive function to support translation of MST into initial GA solutions
 
@@ -289,16 +291,19 @@ if __name__ == "__main__":
     start= perf_counter()
 
     # Parallelization over potentially multiple runs (change 1 below e.g. to 30)
-    for run in range(0,30):
-        print(run)
-        worker1 = multiprocessing.Process(name=str(run), target=Worker3D)
-        worker1.start()
+#    for run in range(0,30):
+#        print(run)
+#        worker1 = multiprocessing.Process(name=str(run), target=Worker3D)
+#        worker1.start()
+
+    Parallel(n_jobs=8)(delayed(worker3D)(str(i)) for i in range(30))
+
 
     # Serial
-    for run in range(0,30):
+#    for run in range(0,30):
         # worker1 = multiprocessing.Process(name=str(run), target=worker)
         # worker1.start()
-        worker3D(str(run))
+        #         worker3D(str(run))
         # if run == 2:
         #     break
 
@@ -307,7 +312,7 @@ if __name__ == "__main__":
 
     cols = ['name', 'num_clusters', 'modularity_score', 'modularity_score_1', 'modularity_score_2', 'adj_rand_index', 'graph_idx']
     df_3d_legacydata_legacycode = pd.DataFrame(columns=cols, data=temp_results)
-    path = './_temp'
+    #path = './_temp'
     os.makedirs(path, exist_ok=True)
     df_3d_legacydata_legacycode.to_csv(os.path.join(path, '3d_legacydata_legacycode.csv'), index=None)
     df_3d_legacydata_legacycode.shape

@@ -1,5 +1,6 @@
 # path = "/Users/mcdicjh2/Desktop/gecco22/"
-path = "./_temp/data_2_shuffled/"
+# path = "./_temp/data_2_shuffled/"
+path = "./hichemdata_220309/data_2_shuffled/"
 from sklearn.metrics.cluster import adjusted_rand_score
 
 # Recursive function to support translation of MST into initial GA solutions
@@ -295,10 +296,10 @@ if __name__ == "__main__":
     start= perf_counter()
 
     # Parallelization over potentially multiple runs (change 1 below e.g. to 30)
-    for run in range(0,30):
-        print(run)
-        worker1 = multiprocessing.Process(name=str(run), target=Worker2D)
-        worker1.start()
+#    for run in range(0,30):
+#        print(run)
+#        worker1 = multiprocessing.Process(name=str(run), target=Worker2D)
+#        worker1.start()
 
     # Serial
     for run in range(0,30):

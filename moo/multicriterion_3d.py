@@ -119,7 +119,7 @@ import time
     
 def worker3D(name):
 
-    temp_results2 = [] # Results for one graph (no duplicates)
+    run_results = [] # Results for one graph (no duplicates)
     # print("Starting")
     # name = multiprocessing.current_process().name
     print(f"Processing graph {int(name)+1}")
@@ -262,7 +262,7 @@ def worker3D(name):
 
 
             mp_result.loc[it*30+n] = len(c), m3, m1, m2, ari
-            temp_results2.append(['3d', len(c), m3, m1, m2, ari, int(name)+1])
+            run_results.append(['3d', len(c), m3, m1, m2, ari, int(name)+1])
 
 
     mp_result.drop_duplicates(keep="first",inplace=True)
@@ -270,16 +270,16 @@ def worker3D(name):
     print(path+"Graph"+name+".mp.csv")
 
     cols = ['name', 'num_clusters', 'modularity_score', 'modularity_score_1', 'modularity_score_2', 'adj_rand_index', 'graph_idx']
-    df_3d_legacydata_legacycode = pd.DataFrame(columns=cols, data=temp_results2)
+    df_3d_legacydata_legacycode = pd.DataFrame(columns=cols, data=run_results)
     # print("Before duplicate removal, size :", df_3d_legacydata_legacycode.shape)
     df_3d_legacydata_legacycode.drop_duplicates(keep="first",inplace=True)
     # print("After duplicate removal, size :", df_3d_legacydata_legacycode.shape)
-    temp_results2 = df_3d_legacydata_legacycode.values.tolist() #TODO is tolist necessary?
+    run_results = df_3d_legacydata_legacycode.values.tolist() #TODO is tolist necessary?
    # temp_results.extend(temp_results2)
 
     print(f"Done Processing graph {int(name)+1}")
     # Return the results
-    return(temp_results2)
+    return(run_results)
 
 # Parallelization over potentially multiple runs (change 1 below e.g. to 30)
 # for run in range(0,30):
@@ -298,7 +298,7 @@ if __name__ == "__main__":
 #        worker1 = multiprocessing.Process(name=str(run), target=Worker3D)
 #        worker1.start()
 
-    temp_results = Parallel(n_jobs=7)(delayed(worker3D)(str(i)) for i in range(30))
+    run_results = Parallel(n_jobs=7)(delayed(worker3D)(str(i)) for i in range(30))
 
     # We get a list of returned values (i.e. a list of lists with worker3D)
     # (Would probably be better to return a dataframe, since that's what we end up with)
@@ -307,7 +307,7 @@ if __name__ == "__main__":
     def flatten(t):
         return [item for sublist in t for item in sublist]
      
-    all_results = flatten(temp_results)
+    all_results = flatten(run_results)
 
     # Serial
 #    for run in range(0,30):

@@ -23,7 +23,7 @@ class ExpConfig():
         self.shuffle=shuffle
         self.seed = 42 if seed is None else seed
     
-    def __repr__(self) -> str:
+    def __str__(self) -> str:
         return f'<ExpConfig: L={self.L}, U={self.U}, NumNodes={self.NumNodes}, NumEdges={self.NumEdges}, ML={self.ML}, MU={self.MU}, BC={self.BC}, NumGraphs={self.NumGraphs}, shuffle={self.shuffle}, seed={self.seed}>'
 
 
@@ -31,8 +31,8 @@ class DataGenerator():
     def __init__(self, expconfig=None):
         self.expconfig = ExpConfig() if expconfig is None else expconfig
     
-    def __repr__(self) -> str:
-        return f'<DataGenerator: {self.expconfig.__repr__()[1:-1]}>'
+    def __str__(self) -> str:
+        return f'<DataGenerator: {self.expconfig.__str__()[1:-1]}>'
 
     def generate_data(self):
         rng = np.random.default_rng(seed=self.expconfig.seed)
@@ -180,7 +180,7 @@ def graphs_equal(g1, g2, attribs):
     """
     # Check indices
     if (g1.vs.indices != g2.vs.indices) or\
-        (g1.get_edgelist() != g2.get_edgelist()):
+        (sorted(g1.get_edgelist()) != sorted(g2.get_edgelist())):
         return False
     
     # Check attributes

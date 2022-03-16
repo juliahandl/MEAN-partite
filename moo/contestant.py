@@ -18,8 +18,7 @@ class CommunityDetector():
         self.name_ = name
         self.params_ = dict() # Parameters of the community detector
         self.results_ = [] # Results (list of dictionaries)
-        pass
-
+        
     def check_graph(self, graph):
         assert isinstance(graph, igraph.Graph), "graph must be of type igraph.Graph"
         assert graph.is_bipartite(return_types=False), "graph must be a bipartite graph"
@@ -431,8 +430,8 @@ class ComDetBRIMNoPert(CommunityDetector):
         output2 = co.tar_memb
         output2=output2["com"].tolist()
         
-        adj_rand_index_1 = adjusted_rand_score(groundtruth1, output2)
-        adj_rand_index_2 = adjusted_rand_score(groundtruth2, output1)
+        # adj_rand_index_1 = adjusted_rand_score(groundtruth1, output2)
+        # adj_rand_index_2 = adjusted_rand_score(groundtruth2, output1)
         output3 = output2 + output1
         adj_rand_index = adjusted_rand_score(ground_truth, output3)
         
@@ -455,6 +454,114 @@ class ComDetBRIMNoPert(CommunityDetector):
     # def get_results(self):
     #     # Returns the community detection results (dict free format)
     #     return self.results_
+
+
+class ComDetBRIM(CommunityDetector):
+    def __init__(self, name= "brim", params = {'method': 'LCS', 'project': False}, min_num_clusters=1, max_num_clusters=15) -> None:
+        #TODO: A range of cluster with a possibility to generate automatically (str argument)
+        super().__init__(name)
+        self.params_ = params
+        
+        assert min_num_clusters >= 1 and min_num_clusters <= max_num_clusters,\
+        f"The minimum {min_num_clusters} and maximum {max_num_clusters} cluster numbers are not valid"
+        self.min_num_clusters_ = min_num_clusters
+        self.max_num_clusters_ = max_num_clusters
+
+
+    def check_graph(self, graph):
+        super().check_graph(graph)
+        # Additional checks go here
+
+    def detect_communities(self, graph, y=None):
+        #TODO: fit instead of this and y as groundtruth or None to infer from the graph
+        # Some checks
+        self.check_graph(graph)
+        self.graph_ = graph
+        self.results_ = [] # Reset results at each call
+        # Community detection done here (results stored in self.results_)
+        self.__detect_communitites()
+        return self # Needs to return self
+       
+    def __detect_communitites(self):
+        # Actual community detection code
+        vertices = list(map(int, self.graph_.vs['type']))
+        edges = self.graph_.get_edgelist()
+        lower = vertices.count(0)
+        upper = vertices.count(1)
+        n_vertices = len(self.graph_.vs)
+        # num_clusters = min(self.num_clusters_+ 1, len(self.graph_.vs)) # This is a different case (see below)
+        ground_truth = self.graph_.vs['GT']
+        graph_proj1, graph_proj2 = self.graph_.bipartite_projection(multiplicity=True)
+
+        # Fix edgelist representation for BRIM package (needs 0 vertices as start)
+        for i in range (0, len(edges)):
+            if vertices[edges[i][0]] == 0:
+                temp = edges[i]
+                edges[i] = (temp[0], temp[1])
+            elif vertices[edges[i][1]] == 0:
+                temp = edges[i]
+                edges[i] = (temp[1], temp[0])
+            else:
+                print("Error")
+
+        net = pd.DataFrame(edges, dtype=str)
+
+        co = condor.condor_object(dataframe=net, verbose=False)
+        co.initial_community(**self.params_)
+        co.brim()
+
+        # groundtruth1 = ground_truth[0:lower]
+        # groundtruth2 = ground_truth[lower:n_vertices]
+
+        # output1 = co["reg_memb"]
+        # output1 = output1["com"].tolist()
+        # output2 = co["tar_memb"]
+        # output2 = output2["com"].tolist()
+
+        output1=co.reg_memb
+        output1=output1["com"].tolist()
+        output2 = co.tar_memb
+        output2=output2["com"].tolist()
+        
+        # adj_rand_index_1 = adjusted_rand_score(groundtruth1, output2)
+        # adj_rand_index_2 = adjusted_rand_score(groundtruth2, output1)
+        # output3 = output2 + output1
+
+        output3 = np.full(n_vertices, -1, dtype=int)
+        index1 = 0
+        index2 = 0
+        for v in range (0, n_vertices):
+            if vertices[v] == 0:
+                output3[v] = output2[index1]
+                index1 += 1
+            else:
+                output3[v] = output1[index2]
+                index2 += 1
+
+        adj_rand_index = adjusted_rand_score(ground_truth, output3)
+        
+        modularity_score = self.graph_.modularity(output3)
+        modularity_score_1 = graph_proj1.modularity(output2, weights = graph_proj1.es['weight'])
+        modularity_score_2 = graph_proj2.modularity(output1, weights = graph_proj2.es['weight'])
+
+        k = (max(output3) + 1)
+        result = dict(
+                name=self.name_,
+                num_clusters = k,
+                modularity_score = modularity_score,
+                modularity_score_1 = modularity_score_1,
+                modularity_score_2 = modularity_score_2,
+                adj_rand_index = adj_rand_index,
+            )
+        self.results_.append(result)
+
+    # Optional overriding
+    # def get_results(self):
+    #     # Returns the community detection results (dict free format)
+    #     return self.results_
+
+#TODO ComDetBRIM (perturbation version) based on ComDetBRIMNoPert
+#TODO Compare condor results for the current version and the old version 1.1 that Julia used
 
 ########################################################
 #### Utility
@@ -482,6 +589,7 @@ def draw_best_community_solutions(df_best_community_solutions, ax=None):
     assert set(columns).issubset(set(df_best_community_solutions.columns)), f"Column names must include (in any order): {columns}"
     # stats = df_best_community_solutions.groupby(['name'])['adj_rand_index'].describe().reset_index(frop=False)
     # ax = df_best_community_solutions.boxplot(column='adj_rand_index', by='name')
+        
     ax = sns.boxplot(y='adj_rand_index', x='name', data=df_best_community_solutions, ax=ax)
     return ax, df_best_community_solutions.groupby(['name'])['adj_rand_index'].describe().reset_index()
     # # , hue=None,

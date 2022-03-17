@@ -413,7 +413,7 @@ class ComDetBRIMNoPert(CommunityDetector):
 
         net = pd.DataFrame(edges, dtype=str)
 
-        co = condor.condor_object(dataframe=net)
+        co = condor.condor_object(dataframe=net, verbose=False)
         co.initial_community(**self.params_)
         co.brim()
 
@@ -426,8 +426,10 @@ class ComDetBRIMNoPert(CommunityDetector):
         # output2 = output2["com"].tolist()
 
         output1=co.reg_memb
+        # print(output1.shape)
         output1=output1["com"].tolist()
         output2 = co.tar_memb
+        # print(output2.shape)
         output2=output2["com"].tolist()
         
         # adj_rand_index_1 = adjusted_rand_score(groundtruth1, output2)
@@ -436,8 +438,10 @@ class ComDetBRIMNoPert(CommunityDetector):
         adj_rand_index = adjusted_rand_score(ground_truth, output3)
         
         modularity_score = self.graph_.modularity(output3)
-        modularity_score_1 = graph_proj1.modularity(output2, weights = graph_proj1.es['weight'])
-        modularity_score_2 = graph_proj2.modularity(output1, weights = graph_proj2.es['weight'])
+        # print(len(output2), len(graph_proj1.vs), len(graph_proj1.es['weight']))
+        # print(len(output1), len(graph_proj2.vs), len(graph_proj2.es['weight']))
+        modularity_score_1 = graph_proj1.modularity(output1, weights = graph_proj1.es['weight'])
+        modularity_score_2 = graph_proj2.modularity(output2, weights = graph_proj2.es['weight'])
 
         k = (max(output3) + 1)
         result = dict(
@@ -541,8 +545,8 @@ class ComDetBRIM(CommunityDetector):
         adj_rand_index = adjusted_rand_score(ground_truth, output3)
         
         modularity_score = self.graph_.modularity(output3)
-        modularity_score_1 = graph_proj1.modularity(output2, weights = graph_proj1.es['weight'])
-        modularity_score_2 = graph_proj2.modularity(output1, weights = graph_proj2.es['weight'])
+        modularity_score_1 = graph_proj1.modularity(output1, weights = graph_proj1.es['weight'])
+        modularity_score_2 = graph_proj2.modularity(output2, weights = graph_proj2.es['weight'])
 
         k = (max(output3) + 1)
         result = dict(

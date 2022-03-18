@@ -1,5 +1,8 @@
 # path = "/Users/mcdicjh2/Desktop/gecco22/"
-path = "./_temp/data_2_shuffled/"
+# path = "./_temp/data_2_shuffled_fig06/"
+# path = "./_temp/data_1_nonshuffled/" # for non-dominated solution issue
+path = './_temp/fig07_data_1_nonshuffled/'
+print(path)
 from sklearn.metrics.cluster import adjusted_rand_score
 
 # Recursive function to support translation of MST into initial GA solutions
@@ -233,7 +236,7 @@ def worker3D(name):
         res = minimize(elementwise_problem,
                    algorithm,
                    termination,
-                   seed=1,
+                   seed=None,
                    save_history=True,
                    verbose=False, # True
                    )
@@ -263,8 +266,10 @@ def worker3D(name):
             mp_result.loc[it*30+n] = len(c), m3, m1, m2, ari
             temp_results2.append(['3d', len(c), m3, m1, m2, ari, int(name)+1])
 
-
+    import pickle
+    # pickle.dump(mp_result, open('./_temp/nondominant_duplicates.pickle', 'wb'))
     mp_result.drop_duplicates(keep="first",inplace=True)
+    # pickle.dump(mp_result, open('./_temp/nondominant.pickle', 'wb'))
     mp_result.to_csv(path+"Graph"+name+".mp.csv")
     print(path+"Graph"+name+".mp.csv")
 
@@ -288,17 +293,22 @@ if __name__ == "__main__":
     from time import perf_counter
     start= perf_counter()
 
-    # Parallelization over potentially multiple runs (change 1 below e.g. to 30)
-    for run in range(0,30):
-        print(run)
-        worker1 = multiprocessing.Process(name=str(run), target=Worker3D)
-        worker1.start()
+    # # Parallelization over potentially multiple runs (change 1 below e.g. to 30)
+    # for run in range(0,30):
+    #     print(run)
+    #     worker1 = multiprocessing.Process(name=str(run), target=worker3D)
+    #     worker1.start()
+
+    # # For non-dominant solution issue
+    # worker3D(str(20))
 
     # Serial
     for run in range(0,30):
         # worker1 = multiprocessing.Process(name=str(run), target=worker)
         # worker1.start()
         worker3D(str(run))
+        print(run)
+        # break
         # if run == 2:
         #     break
 
@@ -309,7 +319,7 @@ if __name__ == "__main__":
     df_3d_legacydata_legacycode = pd.DataFrame(columns=cols, data=temp_results)
     path = './_temp'
     os.makedirs(path, exist_ok=True)
-    df_3d_legacydata_legacycode.to_csv(os.path.join(path, '3d_legacydata_legacycode.csv'), index=None)
+    df_3d_legacydata_legacycode.to_csv(os.path.join(path, 'fig_07_nopert_3d.csv'), index=None)
     df_3d_legacydata_legacycode.shape
 
 

@@ -1,5 +1,8 @@
 # path = "/Users/mcdicjh2/Desktop/gecco22/"
-path = "./_temp/data_2_shuffled/"
+# path = "./_temp/data_2_shuffled/"
+# path = "./_temp/data_2_shuffled_fig06/"
+path = './_temp/fig07_data_1_nonshuffled/'
+print(path)
 from sklearn.metrics.cluster import adjusted_rand_score
 
 # Recursive function to support translation of MST into initial GA solutions
@@ -238,7 +241,7 @@ def worker2D(name):
         res = minimize(elementwise_problem,
                    algorithm,
                    termination,
-                   seed=1,
+                   seed=None,
                    save_history=True,
                    verbose=False, # True
                    )
@@ -266,7 +269,7 @@ def worker2D(name):
 
 
             mp_result.loc[it*30+n] = len(c), m3, m1, m2, ari
-            temp_results2.append(['3d', len(c), m3, m1, m2, ari, int(name)+1])
+            temp_results2.append(['2d', len(c), m3, m1, m2, ari, int(name)+1])
 
 
     mp_result.drop_duplicates(keep="first",inplace=True)
@@ -294,11 +297,11 @@ if __name__ == "__main__":
     from time import perf_counter
     start= perf_counter()
 
-    # Parallelization over potentially multiple runs (change 1 below e.g. to 30)
-    for run in range(0,30):
-        print(run)
-        worker1 = multiprocessing.Process(name=str(run), target=Worker2D)
-        worker1.start()
+    # # Parallelization over potentially multiple runs (change 1 below e.g. to 30)
+    # for run in range(0,30):
+    #     print(run)
+    #     worker1 = multiprocessing.Process(name=str(run), target=worker)
+    #     worker1.start()
 
     # Serial
     for run in range(0,30):
@@ -316,7 +319,7 @@ if __name__ == "__main__":
     df_2d_legacydata_legacycode = pd.DataFrame(columns=cols, data=temp_results)
     path = './_temp'
     os.makedirs(path, exist_ok=True)
-    df_2d_legacydata_legacycode.to_csv(os.path.join(path, '2d_legacydata_legacycode.csv'), index=None)
+    df_2d_legacydata_legacycode.to_csv(os.path.join(path, 'fig_07_nopert_2d.csv'), index=None)
     df_2d_legacydata_legacycode.shape
 
 

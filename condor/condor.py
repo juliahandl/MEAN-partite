@@ -4,7 +4,7 @@ from igraph import *
 from .timer import Timer
 
 class condor_object:
-    def __init__(self,  network_file = None,sep=",",index_col=0,header=0,dataframe = None):
+    def __init__(self,  network_file = None,sep=",",index_col=0,header=0,dataframe = None, verbose=True):
         """
         Description:
             Initialization of the condor object. The function gets a network in edgelist format as a path to a file or encoded in a pandas dataframe.
@@ -27,6 +27,7 @@ class condor_object:
             index_dict: dictionary keeping track of the indices in the "graph" variable and the actual names of the nodes.
         """
         
+        self.verbose = verbose
         #Checks that either a dataframe or a path to an edgelist are provided, and not to both at the same time.
         assert (dataframe is not None or network_file is not None), "Could not create condor object. Edgelist must be passed either as a pandas DataFrame or path to file."
         assert (dataframe is None or network_file is None), "Could not create condor object. Either pass a DataFrame or a file path. Not both."
@@ -48,14 +49,14 @@ class condor_object:
         self.net.iloc[:,1] = "tar_" + self.net.iloc[:,1]
         #self.net.columns = ["V1","V2","weight"]
 
-        with Timer("Object creation:"):
+        with Timer(name="Object creation:", verbose=self.verbose):
             #Checks that the DataFrame gives rise to a well-defined bipartite network.
             assert not self.net.isnull().any().any(), "NaN values detected."
             assert not ("" in list(self.net.iloc[:,0]) or "" in list(self.net.iloc[:,1])), "Empty strings detected."
             
             #Checks if weights are provided. If not, a column with 1s is added to the DataFrame.
             if self.net.shape[1] != 3: 
-                print("Unweighted network. Weights initialized as 1.")
+                if self.verbose: print("Unweighted network. Weights initialized as 1.")
                 self.net["weight"] = 1
             
             #Creates iGraph object from the DataFrame.
@@ -104,7 +105,7 @@ class condor_object:
         """        
         weights_id = self.net.columns[2]
         if project:
-            with Timer("Initial community structure with projection:"):
+            with Timer("Initial community structure with projection:", verbose=self.verbose):
                 
                 #Obtains bipartite projection onto target subset.
                 projected_graph = self.graph.bipartite_projection(which=1)
@@ -119,7 +120,7 @@ class condor_object:
                     vc = Graph.community_leiden(projected_graph,weights=weights_id).as_clustering()
                     
                 self.modularity = vc.modularity
-                print("Initial modularity: ",self.modularity)
+                if self.verbose: print("Initial modularity: ",self.modularity)
                 
                 tar_index = [i.index for i in self.graph.vs.select(type_in=[1])]
                 #By the ordering on the indices, the target nodes indices begin at len(co.reg_names)
@@ -141,7 +142,7 @@ class condor_object:
                 
                 #Sort of the same as above but without projecting. The bipartite network is treated as a unipartite network.
         else:
-            with Timer("Initial community structure without projection:"):
+            with Timer("Initial community structure without projection:", verbose=self.verbose):
                 if method=="LCS":
                     vc = Graph.community_multilevel(self.graph,weights=weights_id)
                 if method=="LEC":
@@ -152,7 +153,7 @@ class condor_object:
                     vc = Graph.community_leiden(self.graph,weights=weights_id).as_clustering()
                 
                 self.modularity = vc.modularity
-                print("Initial modularity: ",self.modularity)
+                if self.verbose: print("Initial modularity: ",self.modularity)
 
                 
                 tar_index = [i.index for i in self.graph.vs.select(type_in=[1])]
@@ -216,7 +217,7 @@ class condor_object:
             """
         
         
-        with Timer("Matrix computation:"):
+        with Timer("Matrix computation:", verbose=self.verbose):
             
             #Dimensions of the matrix
             p = len(self.tar_names)
@@ -289,7 +290,7 @@ class condor_object:
         if(deltaQmin == "def"):
             deltaQmin = min(1/m,1e-5)
             
-        with Timer("BRIM: "):
+        with Timer("BRIM: ", verbose=self.verbose):
             Qnow = 0
             deltaQ = 1
             p,q = B.shape
@@ -313,7 +314,7 @@ class condor_object:
                 Qthen = Qnow
                 Qnow = self.bipartite_modularity(B,m,R,T)
                 deltaQ = Qnow-Qthen
-                print(Qnow)
+                if self.verbose: print(Qnow)
 
             self.modularity = Qnow
         

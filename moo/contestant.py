@@ -4,6 +4,7 @@ import igraph
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics.cluster import adjusted_rand_score
 import condor
+from condor import condor
 
 class CommunityDetector():
     """

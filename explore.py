@@ -9,6 +9,12 @@ from moo.contestant import get_best_community_solutions, draw_best_community_sol
 import moo.contestant as contestant
 import matplotlib.pyplot as plt
 
+from joblib import Parallel, delayed
+import itertools
+
+import pandas as pd
+
+
 # Define an experiment configuration instance (parameters for data generation)
 expconfig = ExpConfig(
     L=100, U=500,
@@ -21,7 +27,9 @@ print(expconfig) # Print parameters, or access individually, e.g., expconfig.Num
 
 expgen = DataGenerator(expconfig=expconfig) # Pass defined parameters
 print(expgen)
-datagen = expgen.generate_data() # datagen is an iterator
+datagenMaster = expgen.generate_data() # datagen is an iterator
+
+datagen, datagenJoblib = itertools.tee(datagenMaster)
 
 
 algos = [
@@ -31,6 +39,32 @@ algos = [
     contestant.ComDetFastGreedy(), # FastGreedy approach
     
 ]
+
+
+
+combinedList = itertools.product(enumerate(datagenJoblib), algos)
+
+def runalgo(c):
+    # Extract elements we need
+    ig, algo = c
+    i, g  = ig
+    #print(i, algo)
+    result = algo.detect_communities(graph=g).get_results()
+    for r in result: 
+        r['graph_idx'] = i + 1
+
+    return(r)
+
+
+print("Parallel")
+joblibresults = Parallel(n_jobs = 7) (delayed(runalgo)(c) for c in combinedList)
+print("Done parallel")
+
+df_joblibresults = pd.DataFrame(joblibresults) 
+print(df_joblibresults.shape)
+df_joblibresults.head()
+
+df_joblibresults.to_excel("joblib.xlsx")
 
 results = [] # Holds results of contestants
 for g_idx, graph in enumerate(datagen):
@@ -43,3 +77,10 @@ for g_idx, graph in enumerate(datagen):
             r['graph_idx'] = g_idx + 1
         results.extend(result)
 
+
+# Optional: Convert results into a dataframe (to use pandas capabilities)
+df_contestants = pd.DataFrame(results) # Column names are inferred from the dictionaries' keys
+print(df_contestants.shape)
+df_contestants.head()
+
+df_contestants.to_excel("series.xlsx")

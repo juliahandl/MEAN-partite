@@ -19,16 +19,18 @@ import pandas as pd
 expconfig = ExpConfig(
     L=100, U=500,
     NumEdges=1000, ML=0.4, MU=0.4,
-    BC=0.1, NumGraphs=5,
+    BC=0.1, NumGraphs=30,
     shuffle=True, # Shuffle labels (or no)
-    seed=None # For reproducibility (this is the default, but can be changed)
+    seed=1234  # For reproducibility (this is the default, but can be changed)
     )
 print(expconfig) # Print parameters, or access individually, e.g., expconfig.NumEdges
 
 expgen = DataGenerator(expconfig=expconfig) # Pass defined parameters
-print(expgen)
+
+
 datagenMaster = expgen.generate_data() # datagen is an iterator
 
+# Copy the iterator so we can use it for serial and parallel 
 datagen, datagenJoblib = itertools.tee(datagenMaster)
 
 
@@ -53,12 +55,17 @@ def runalgo(c):
     for r in result: 
         r['graph_idx'] = i + 1
 
-    return(r)
+    return(result)
 
 
 print("Parallel")
-joblibresults = Parallel(n_jobs = 7) (delayed(runalgo)(c) for c in combinedList)
+joblibresultsStacked = Parallel(n_jobs = 7) (delayed(runalgo)(c) for c in combinedList)
 print("Done parallel")
+
+def flatten(t):
+    return [item for sublist in t for item in sublist]
+
+joblibresults = flatten(joblibresultsStacked)
 
 df_joblibresults = pd.DataFrame(joblibresults) 
 print(df_joblibresults.shape)

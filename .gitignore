@@ -154,3 +154,11 @@ cython_debug/
 _private
 _*
 .vscode/
+ 
+# venv
+bipartite/*
+
+# Input data/Output files
+hichemdata_220309/*
+data_?_*.zip
+

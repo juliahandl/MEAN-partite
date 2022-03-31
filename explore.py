@@ -7,10 +7,11 @@ from moo.data_generation import ExpConfig, DataGenerator
 from moo.data_generation import ExpConfig, DataGenerator
 from moo.contestant import get_best_community_solutions, draw_best_community_solutions
 import moo.contestant as contestant
+from moo.communities import run_parallel_communities
+
+
 import matplotlib.pyplot as plt
 
-from joblib import Parallel, delayed
-import itertools
 
 import pandas as pd
 
@@ -28,10 +29,9 @@ print(expconfig) # Print parameters, or access individually, e.g., expconfig.Num
 expgen = DataGenerator(expconfig=expconfig) # Pass defined parameters
 
 
-datagenMaster = expgen.generate_data() # datagen is an iterator
-
 # Copy the iterator so we can use it for serial and parallel 
-datagen, datagenJoblib = itertools.tee(datagenMaster)
+datagen = expgen.generate_data() # datagen is an iterator
+datagenJoblib = expgen.generate_data() # datagen is an iterator
 
 
 algos = [
@@ -39,33 +39,25 @@ algos = [
     contestant.ComDetEdgeBetweenness(), # EdgeBetweenness approach
     contestant.ComDetWalkTrap(), # WalkTrap approach
     contestant.ComDetFastGreedy(), # FastGreedy approach
-    
 ]
 
 
+# graphlist = list(datagenMaster)
+# graphlist2 = list(datagenMaster2)
 
-combinedList = itertools.product(enumerate(datagenJoblib), algos)
-
-def runalgo(c):
-    # Extract elements we need
-    ig, algo = c
-    i, g  = ig
-    #print(i, algo)
-    result = algo.detect_communities(graph=g).get_results()
-    for r in result: 
-        r['graph_idx'] = i + 1
-
-    return(result)
+# Quick check - are the number of vertices in matching pairs the same
+# for gp in zip(graphlist, graphlist2):
+#     g0count = gp[0].vcount()
+#     g1count = gp[1].vcount()
+#     print(g0count, g1count)
 
 
-print("Parallel")
-joblibresultsStacked = Parallel(n_jobs = 7) (delayed(runalgo)(c) for c in combinedList)
-print("Done parallel")
+# quit()
 
-def flatten(t):
-    return [item for sublist in t for item in sublist]
 
-joblibresults = flatten(joblibresultsStacked)
+# Run in paralllel
+joblibresults = run_parallel_communities(datagenJoblib, algos, n_jobs=7)
+
 
 df_joblibresults = pd.DataFrame(joblibresults) 
 print(df_joblibresults.shape)
@@ -91,3 +83,7 @@ print(df_contestants.shape)
 df_contestants.head()
 
 df_contestants.to_excel("series.xlsx")
+
+
+# Looks like multilevel isn't reproducible, but the others are?  Check this
+

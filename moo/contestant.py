@@ -4,7 +4,7 @@ import igraph
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics.cluster import adjusted_rand_score
 import condor
-from condor import condor
+#from condor import condor
 
 class CommunityDetector():
     """
@@ -467,6 +467,7 @@ class ComDetBRIM(CommunityDetector):
         super().__init__(name)
         self.params_ = params
         
+        #FIXME - min_num_clusters and max_num_clusters not making it to co object
         assert min_num_clusters >= 1 and min_num_clusters <= max_num_clusters,\
         f"The minimum {min_num_clusters} and maximum {max_num_clusters} cluster numbers are not valid"
         self.min_num_clusters_ = min_num_clusters
@@ -511,9 +512,11 @@ class ComDetBRIM(CommunityDetector):
 
         net = pd.DataFrame(edges, dtype=str)
 
-        co = condor.condor_object(dataframe=net, verbose=False)
-        co.initial_community(**self.params_)
-        co.brim()
+        co = condor.condor_object(net)
+        #co.initial_community(**self.params_)
+        co = condor.initial_community(co)
+        #co.brim()
+        co = condor.brim(co)
 
         # groundtruth1 = ground_truth[0:lower]
         # groundtruth2 = ground_truth[lower:n_vertices]
@@ -523,33 +526,56 @@ class ComDetBRIM(CommunityDetector):
         # output2 = co["tar_memb"]
         # output2 = output2["com"].tolist()
 
-        output1=co.reg_memb
-        output1=output1["com"].tolist()
-        output2 = co.tar_memb
-        output2=output2["com"].tolist()
+        # Get the original node numbers from the graph we gave condor
+        # reg_memb = co.reg_memb.copy()
+        reg_memb = co["reg_memb"].copy()
+        reg_memb["reg"]=reg_memb["reg"].str.replace(r'^reg_', '', regex=True)
+        reg_memb["reg"]=reg_memb["reg"].astype(int)
+        reg_memb.rename(columns={"reg": "vindex"},inplace=True)
+        reg_memb.sort_values("vindex", inplace=True)
+
+        
+        # tar_memb = co.tar_memb.copy()
+        tar_memb = co["tar_memb"].copy()
+        tar_memb["tar"]=tar_memb["tar"].str.replace(r'^tar_', '', regex=True)
+        tar_memb["tar"]=tar_memb["tar"].astype(int)
+        tar_memb.rename(columns={"tar": "vindex"},inplace=True)
+        tar_memb.sort_values("vindex", inplace=True)
+
+        combined_memb = pd.concat([reg_memb, tar_memb])
+        combined_memb.sort_values("vindex", inplace=True)
+
+        # Concatenate the two membership lists and sort by 
+
+        # output1=co.reg_memb
+        # output1=output1["com"].tolist()
+        # output2 = co.tar_memb
+        # output2=output2["com"].tolist()
         
         # adj_rand_index_1 = adjusted_rand_score(groundtruth1, output2)
         # adj_rand_index_2 = adjusted_rand_score(groundtruth2, output1)
         # output3 = output2 + output1
 
-        output3 = np.full(n_vertices, -1, dtype=int)
-        index1 = 0
-        index2 = 0
-        for v in range (0, n_vertices):
-            if vertices[v] == 0:
-                output3[v] = output2[index1]
-                index1 += 1
-            else:
-                output3[v] = output1[index2]
-                index2 += 1
-
-        adj_rand_index = adjusted_rand_score(ground_truth, output3)
         
-        modularity_score = self.graph_.modularity(output3)
-        modularity_score_1 = graph_proj1.modularity(output1, weights = graph_proj1.es['weight'])
-        modularity_score_2 = graph_proj2.modularity(output2, weights = graph_proj2.es['weight'])
 
-        k = (max(output3) + 1)
+        # output3 = np.full(n_vertices, -1, dtype=int)
+        # index1 = 0
+        # index2 = 0
+        # for v in range (0, n_vertices):
+        #     if vertices[v] == 0:
+        #         output3[v] = output2[index1]
+        #         index1 += 1
+        #     else:
+        #         output3[v] = output1[index2]
+        #         index2 += 1
+
+        adj_rand_index = adjusted_rand_score(ground_truth, combined_memb["com"].tolist())
+        
+        modularity_score = self.graph_.modularity(combined_memb["com"].tolist())
+        modularity_score_1 = graph_proj1.modularity(tar_memb["com"].tolist(), weights = graph_proj1.es['weight'])
+        modularity_score_2 = graph_proj2.modularity(reg_memb["com"].tolist(), weights = graph_proj2.es['weight'])
+
+        k = (max(combined_memb["com"].tolist()) + 1)
         result = dict(
                 name=self.name_,
                 num_clusters = k,
@@ -657,9 +683,9 @@ if __name__ == "__main__":
     #     graph = it
     #     break
     algos = [
-        ComDetEdgeBetweenness(num_clusters=15),
-        ComDetWalkTrap(num_clusters=15),
-        ComDetFastGreedy(num_clusters=15),
+        ComDetEdgeBetweenness(max_num_clusters=15),
+        ComDetWalkTrap(max_num_clusters=15),
+        ComDetFastGreedy(max_num_clusters=15),
     ][:1]
     results = []
     for g_idx, graph in enumerate(graphs):

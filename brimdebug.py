@@ -1,4 +1,5 @@
 # BRIM explore
+# This is working with version 1.1 of Condor - git commit 389932
 
 
 import igraph

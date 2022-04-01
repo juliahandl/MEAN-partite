@@ -16,12 +16,13 @@ import pandas as pd
 
 
 expconfig = ExpConfig(
-    L=100, U=500,
-    NumEdges=1000, ML=0.4, MU=0.4,
+    L=30, U=30,
+    NumEdges=200, ML=0.5, MU=0.5,
     BC=0.1, NumGraphs=30,
     shuffle=True,
     seed=1234  
     )
+
 
 
 algos = [

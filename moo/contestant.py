@@ -474,6 +474,8 @@ class ComDetBRIM(CommunityDetector):
         self.min_num_clusters_ = min_num_clusters
         self.max_num_clusters_ = max_num_clusters
 
+        self.__test_condor_version()
+
 
     def check_graph(self, graph):
         super().check_graph(graph)
@@ -488,6 +490,24 @@ class ComDetBRIM(CommunityDetector):
         # Community detection done here (results stored in self.results_)
         self.__detect_communitites()
         return self # Needs to return self
+
+    def __test_condor_version(self):
+        # Check we're using the old condor version.  Do this by trying to initialise a condor object with a dataframe 
+        # parameter. This will only succeed on the new version.
+        
+        # Dummy dataset
+        df = pd.DataFrame(list(zip(["0","2"], ["1","3"])),
+               columns =['0', '1']) 
+        df["weight"]=1
+
+        try: 
+            tc = condor.condor_object(dataframe=df)
+        except TypeError as e:
+            return True
+
+        raise RuntimeError("Incorrect version of condor installed - use git commit 38993 from /genisott/pycondor")            
+        
+            
        
     def __detect_communitites(self):
         # Actual community detection code

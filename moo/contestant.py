@@ -512,11 +512,15 @@ class ComDetBRIM(CommunityDetector):
 
         net = pd.DataFrame(edges, dtype=str)
 
-        co = condor.condor_object(net)
-        #co.initial_community(**self.params_)
-        co = condor.initial_community(co)
-        #co.brim()
-        co = condor.brim(co)
+        # Set weight to 1 for all links
+        # TODO add note
+        net["weight"]=1
+
+        co = condor.condor_object(dataframe=net)
+        co.initial_community(**self.params_)
+        # co = condor.initial_community(co)
+        co.brim()
+        # co = condor.brim(co)
 
         # groundtruth1 = ground_truth[0:lower]
         # groundtruth2 = ground_truth[lower:n_vertices]
@@ -527,16 +531,16 @@ class ComDetBRIM(CommunityDetector):
         # output2 = output2["com"].tolist()
 
         # Get the original node numbers from the graph we gave condor
-        # reg_memb = co.reg_memb.copy()
-        reg_memb = co["reg_memb"].copy()
+        reg_memb = co.reg_memb.copy()
+        #reg_memb = co["reg_memb"].copy()
         reg_memb["reg"]=reg_memb["reg"].str.replace(r'^reg_', '', regex=True)
         reg_memb["reg"]=reg_memb["reg"].astype(int)
         reg_memb.rename(columns={"reg": "vindex"},inplace=True)
         reg_memb.sort_values("vindex", inplace=True)
 
         
-        # tar_memb = co.tar_memb.copy()
-        tar_memb = co["tar_memb"].copy()
+        tar_memb = co.tar_memb.copy()
+        #tar_memb = co["tar_memb"].copy()
         tar_memb["tar"]=tar_memb["tar"].str.replace(r'^tar_', '', regex=True)
         tar_memb["tar"]=tar_memb["tar"].astype(int)
         tar_memb.rename(columns={"tar": "vindex"},inplace=True)

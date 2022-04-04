@@ -4,6 +4,7 @@ import igraph
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics.cluster import adjusted_rand_score
 import condor
+from moo.utils import nostdout
 #from condor import condor
 
 class CommunityDetector():
@@ -516,11 +517,12 @@ class ComDetBRIM(CommunityDetector):
         # TODO add note
         net["weight"]=1
 
-        co = condor.condor_object(dataframe=net)
-        co.initial_community(**self.params_)
-        # co = condor.initial_community(co)
-        co.brim()
-        # co = condor.brim(co)
+        # Run the algorithm, suppressing its very verbose output
+        with nostdout():
+            co = condor.condor_object(net)
+            co = condor.initial_community(co, **self.params_)
+        
+            co = condor.brim(co)
 
         # groundtruth1 = ground_truth[0:lower]
         # groundtruth2 = ground_truth[lower:n_vertices]
@@ -531,16 +533,16 @@ class ComDetBRIM(CommunityDetector):
         # output2 = output2["com"].tolist()
 
         # Get the original node numbers from the graph we gave condor
-        reg_memb = co.reg_memb.copy()
-        #reg_memb = co["reg_memb"].copy()
+        #reg_memb = co.reg_memb.copy()
+        reg_memb = co["reg_memb"].copy()
         reg_memb["reg"]=reg_memb["reg"].str.replace(r'^reg_', '', regex=True)
         reg_memb["reg"]=reg_memb["reg"].astype(int)
         reg_memb.rename(columns={"reg": "vindex"},inplace=True)
         reg_memb.sort_values("vindex", inplace=True)
 
         
-        tar_memb = co.tar_memb.copy()
-        #tar_memb = co["tar_memb"].copy()
+        # tar_memb = co.tar_memb.copy()
+        tar_memb = co["tar_memb"].copy()
         tar_memb["tar"]=tar_memb["tar"].str.replace(r'^tar_', '', regex=True)
         tar_memb["tar"]=tar_memb["tar"].astype(int)
         tar_memb.rename(columns={"tar": "vindex"},inplace=True)

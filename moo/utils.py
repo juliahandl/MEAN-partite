@@ -1,6 +1,22 @@
 import igraph
 import pandas as pd
 
+# Context to suppress verbose output of brim
+# From https://stackoverflow.com/a/2829036
+import contextlib
+import sys
+
+class DummyFile(object):
+    def write(self, x): pass
+
+@contextlib.contextmanager
+def nostdout():
+    save_stdout = sys.stdout
+    sys.stdout = DummyFile()
+    yield
+    sys.stdout = save_stdout
+
+
 
 def strip_groundtruth(graph, gt_attr_name=None):
     """

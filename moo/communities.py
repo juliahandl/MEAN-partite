@@ -4,6 +4,7 @@ from joblib import Parallel, delayed
 import itertools
 
 import pandas as pd
+from tqdm import tqdm
 
 
 # A utility function to generate data for each configuration, and run the community detection algorithms
@@ -67,7 +68,7 @@ def run_parallel_communities(graphgenerator, algos, n_jobs = 4):
 
 
 
-    joblibresultsStacked = Parallel(n_jobs = n_jobs) (delayed(runalgo)(c) for c in combinedList)
+    joblibresultsStacked = Parallel(n_jobs = n_jobs) (delayed(runalgo)(c) for c in tqdm(combinedList))
 
     # Unnest the list we get
     def flatten(t):

@@ -14,5 +14,6 @@ setup(name='moo',
     'pymoo',
     'pandas',
     'condor @ git+https://git@github.com/genisott/pycondor.git@389932cfa4d1954aef7d1b725a33a6b2ef018de2#egg=condor',
-    'seaborn'],
+    'seaborn',
+    'tqdm'],
     zip_safe=False)

@@ -12,5 +12,6 @@ setup(name='moo',
     'python-igraph',
     'sklearn',
     'pymoo',
-    'pandas'],
+    'pandas',
+    'condor @ git+https://git@github.com/genisott/pycondor.git@389932cfa4d1954aef7d1b725a33a6b2ef018de2#egg=condor'],
     zip_safe=False)

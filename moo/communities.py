@@ -78,3 +78,44 @@ def run_parallel_communities(graphgenerator, algos, n_jobs = 4):
 
     return joblibresults
 
+
+def run_serial_communities(graphgenerator, algos):
+    '''
+    Run all combinations of the the graphs produced by the graphgenerator iterator and
+    algorithms specified in the algos list, in series
+
+    graphgenerator An iterator produced by the generate_data() method applied to an expconfig
+    algos A list containing the algorithms to apply to each graph
+
+    Returns a list containing the results of each step of the algorithm.  You will likely want 
+    to select the best solution for each graph / algorithm combination
+
+    '''
+
+    # Get all combinations of graphs and algorithms
+    combinedList = itertools.product(enumerate(graphgenerator), algos)
+
+    def runalgo(c):
+        '''
+        Wrapper function to get the graph object, 
+        '''
+        # Extract elements we need
+        ig, algo = c
+        i, g  = ig
+        #print(i, algo)
+        result = algo.detect_communities(graph=g).get_results()
+        for r in result: 
+            r['graph_idx'] = i + 1
+
+        return(result)
+
+
+    joblibresultsStacked = map(runalgo, combinedList)
+    
+    # Unnest the list we get
+    def flatten(t):
+        return [item for sublist in t for item in sublist]
+
+    joblibresults = flatten(joblibresultsStacked)
+
+    return joblibresults

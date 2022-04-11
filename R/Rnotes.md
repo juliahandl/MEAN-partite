@@ -16,6 +16,10 @@ Activate venv:
 Powershell: `.\venv\Scripts\activate.ps1`
 Comand prompt: `.\venv\Scripts\activate.bat`
 
+On mac
+
+`source venv/bin/activate`
+
 (verify with `pip -V`)
 
 Install moo from github:
@@ -41,6 +45,10 @@ I couldn't get it to work on Windows - tried the suggested fixes at
 https://github.com/rstudio/reticulate/issues/517
 these didn't work
 
+
+## Passing parameters
+
+Pass integers as, e.g. `0L` and None as `py_none()`
 
 
 

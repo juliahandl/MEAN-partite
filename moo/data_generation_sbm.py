@@ -9,7 +9,7 @@ class ExpConfig():
     '''
     def __init__(
         self, L=[40,60], U=[40,60], NumEdges=200, BC=0.2,
-        NumGraphs=30, shuffle=True, seed=None):
+        NumGraphs=30, shuffle=True, seed=None,filename='graphs/test'):
         
         assert len(L) == len(U), 'This generator only supports the same number of communities in each mode'
         
@@ -24,9 +24,10 @@ class ExpConfig():
         self.Vertices = [0] * sum(self.L) + [1] * sum(self.U)
         self.shuffle=shuffle
         self.seed = 42 if seed is None else seed
+        self.filename=filename
     
     def __str__(self) -> str:
-        return f'<ExpConfig: L={self.L}, U={self.U}, NumNodes={self.NumNodes}, NumEdges={self.NumEdges}, BC={self.BC}, NumGraphs={self.NumGraphs}, shuffle={self.shuffle}, seed={self.seed}>'
+        return f'<ExpConfig: filename={self.filename}, L={self.L}, U={self.U}, NumNodes={self.NumNodes}, NumEdges={self.NumEdges}, BC={self.BC}, NumGraphs={self.NumGraphs}, shuffle={self.shuffle}, seed={self.seed}>'
 
 
 class DataGenerator():
@@ -43,6 +44,7 @@ class DataGenerator():
         L = self.expconfig.L
         U = self.expconfig.U
         BC = self.expconfig.BC
+        filename = self.expconfig.filename
         vertices = self.expconfig.Vertices
         
         ## Make some useful calculations to save time.
@@ -198,6 +200,14 @@ class DataGenerator():
                 g.vs['VX'] = topbottom # Vertices
                 g.vs['name'] = topbottom # Vertices
                 g.vs['GT'] = labels # Ground truth
+
+                ## Write g to file.
+                try:
+                    g.write_gml(filename+'_%d.gml' % it)
+                except FileNotFoundError:
+                    print('ERROR: You need to create the specified directory.')
+                    exit()
+
                 yield g#, vT, groundtruth,
 
 

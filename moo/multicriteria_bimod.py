@@ -294,8 +294,8 @@ class ComDetMultiCriteria(CommunityDetector):
                 communities[lab].append(i)
             communities = [c for c in communities if c]
             clust = cdlib.NodeClustering(communities, graph=None, method_name=self.name_)
-            conductance = cdlib.evaluation.conductance(self.graph_,clust)
-            coverage = cdlib.evaluation.edges_inside(self.graph_,clust)
+            conductance = cdlib.evaluation.conductance(self.graph_,clust).score
+            coverage = cdlib.evaluation.edges_inside(self.graph_,clust).score
             performance = bi_performance(badj, proj0_labels+proj1_labels)
             gini = skbio.diversity.alpha.gini_index([len(c) for c in communities])
             

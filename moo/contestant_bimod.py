@@ -108,8 +108,8 @@ class ComDetFastGreedy(CommunityDetector):
             for i,lab in enumerate(vx_clustering.membership):
                 communities[lab].append(i)
             clust = cdlib.NodeClustering(communities, graph=None, method_name=self.name_)
-            conductance = cdlib.evaluation.conductance(self.graph_,clust)
-            coverage = cdlib.evaluation.edges_inside(self.graph_,clust)
+            conductance = cdlib.evaluation.conductance(self.graph_,clust).score
+            coverage = cdlib.evaluation.edges_inside(self.graph_,clust).score
             performance = bi_performance(badj, vx_clustering.membership)
             gini = skbio.diversity.alpha.gini_index([len(c) for c in communities])
             
@@ -194,8 +194,8 @@ class ComDetEdgeBetweenness(CommunityDetector):
             for i,lab in enumerate(vx_clustering.membership):
                 communities[lab].append(i)
             clust = cdlib.NodeClustering(communities, graph=None, method_name=self.name_)
-            conductance = cdlib.evaluation.conductance(self.graph_,clust)
-            coverage = cdlib.evaluation.edges_inside(self.graph_,clust)
+            conductance = cdlib.evaluation.conductance(self.graph_,clust).score
+            coverage = cdlib.evaluation.edges_inside(self.graph_,clust).score
             performance = bi_performance(badj, vx_clustering.membership)
             gini = skbio.diversity.alpha.gini_index([len(c) for c in communities])
             
@@ -281,8 +281,8 @@ class ComDetWalkTrap(CommunityDetector):
             for i,lab in enumerate(vx_clustering.membership):
                 communities[lab].append(i)
             clust = cdlib.NodeClustering(communities, graph=None, method_name=self.name_)
-            conductance = cdlib.evaluation.conductance(self.graph_,clust)
-            coverage = cdlib.evaluation.edges_inside(self.graph_,clust)
+            conductance = cdlib.evaluation.conductance(self.graph_,clust).score
+            coverage = cdlib.evaluation.edges_inside(self.graph_,clust).score
             performance = bi_performance(badj, vx_clustering.membership)
             gini = skbio.diversity.alpha.gini_index([len(c) for c in communities])
             
@@ -427,8 +427,8 @@ class ComDetMultiLevel(CommunityDetector):
             for i,lab in enumerate(newlabels):
                 communities[int(lab)].append(i)
             clust = cdlib.NodeClustering(communities, graph=None, method_name=self.name_)
-            conductance = cdlib.evaluation.conductance(self.graph_,clust)
-            coverage = cdlib.evaluation.edges_inside(self.graph_,clust)
+            conductance = cdlib.evaluation.conductance(self.graph_,clust).score
+            coverage = cdlib.evaluation.edges_inside(self.graph_,clust).score
             performance = bi_performance(badj, newlabels)
             gini = skbio.diversity.alpha.gini_index([len(c) for c in communities])
             
@@ -531,8 +531,8 @@ class ComDetBRIMNoPert(CommunityDetector):
         for i,lab in enumerate(output3):
             communities[lab].append(i)
         clust = cdlib.NodeClustering(communities, graph=None, method_name=self.name_)
-        conductance = cdlib.evaluation.conductance(self.graph_,clust)
-        coverage = cdlib.evaluation.edges_inside(self.graph_,clust)
+        conductance = cdlib.evaluation.conductance(self.graph_,clust).score
+        coverage = cdlib.evaluation.edges_inside(self.graph_,clust).score
         performance = bi_performance(badj, output3)
         gini = skbio.diversity.alpha.gini_index([len(c) for c in communities])
             
@@ -706,8 +706,8 @@ class ComDetBRIM(CommunityDetector):
         communities = [c for c in communities if c]  ## Drop any empty communities from missing numbers that confuse cdlib
         clust = cdlib.NodeClustering(communities, graph=None, method_name=self.name_)
 
-        conductance = cdlib.evaluation.conductance(self.graph_,clust)
-        coverage = cdlib.evaluation.edges_inside(self.graph_,clust)
+        conductance = cdlib.evaluation.conductance(self.graph_,clust).score
+        coverage = cdlib.evaluation.edges_inside(self.graph_,clust).score
         performance = bi_performance(badj, combined_memb["com"].tolist())
         gini = skbio.diversity.alpha.gini_index([len(c) for c in communities])
             
@@ -793,8 +793,8 @@ class ComDetBiLouvain(CommunityDetector):
         for i,lab in enumerate(proj0_labels+proj1_labels):
             communities[lab].append(i)
         clust = cdlib.NodeClustering(communities, graph=None, method_name=self.name_)
-        conductance = cdlib.evaluation.conductance(self.graph_,clust)
-        coverage = cdlib.evaluation.edges_inside(self.graph_,clust)
+        conductance = cdlib.evaluation.conductance(self.graph_,clust).score
+        coverage = cdlib.evaluation.edges_inside(self.graph_,clust).score
         performance = bi_performance(badj, proj0_labels+proj1_labels)
         gini = skbio.diversity.alpha.gini_index([len(c) for c in communities])
         

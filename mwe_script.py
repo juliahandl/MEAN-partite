@@ -22,7 +22,7 @@ start = time.time()
 if use_sbm:
     expconfig = ExpConfig(
     L=[15,15], U=[15,15], NumEdges=200, BC=0.1, NumGraphs=5,
-    shuffle=True, filename='test', seed=24#42
+    shuffle=True, filename='', seed=24#42
     )
 else:
     expconfig = ExpConfig(

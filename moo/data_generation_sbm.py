@@ -9,7 +9,7 @@ class ExpConfig():
     '''
     def __init__(
         self, L=[40,60], U=[40,60], NumEdges=200, BC=0.2,
-        NumGraphs=30, shuffle=True, seed=None,filename='graphs/test'):
+        NumGraphs=30, shuffle=True, seed=None,filename=''):
         
         assert len(L) == len(U), 'This generator only supports the same number of communities in each mode'
         
@@ -202,11 +202,12 @@ class DataGenerator():
                 g.vs['GT'] = labels # Ground truth
 
                 ## Write g to file.
-                try:
-                    g.write_gml(filename+'_%d.gml' % it)
-                except FileNotFoundError:
-                    print('ERROR: You need to create the specified directory.')
-                    exit()
+                if filename:
+                    try:
+                        g.write_gml(filename+'_%d.gml' % it)
+                    except FileNotFoundError:
+                        print('ERROR: You need to create the specified directory.')
+                        exit()
 
                 yield g#, vT, groundtruth,
 

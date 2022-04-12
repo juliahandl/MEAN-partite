@@ -19,6 +19,6 @@ setup(name='moo',
     'psutil',
     'scikit-network',
     'cdlib',
-    'skbio'
+    'scikit-bio'
     ],
     zip_safe=False)

@@ -23,7 +23,7 @@ class MultiCriteriaProblem(ElementwiseProblem):
     """
     Specializes a pymoo problem
     """
-    def __init__(self, mode, graph, badj):
+    def __init__(self, mode, graph):
         
         # Problem-specific arguments: bipartite graph
         assert isinstance(graph, igraph.Graph), "graph must be of type igraph.Graph"
@@ -31,7 +31,6 @@ class MultiCriteriaProblem(ElementwiseProblem):
         assert graph.is_connected(), "graph must be fully connected (one connected component)"
         assert len(graph.vs), "graph must not be empty"
         self.graph_ = graph
-        self.badj_ = badj
 
         assert mode == "3d" or mode == "2d", "mode needs to be either '3d' or '2d'"
         self.mode_ = mode # 3d or 2d (see paper)
@@ -121,11 +120,10 @@ class ComDetMultiCriteria(CommunityDetector):
         super().check_graph(graph)
         # Additional checks go here 
 
-    def detect_communities(self, graph, badj, y=None):
+    def detect_communities(self, graph, y=None):
         # Some checks
         self.check_graph(graph)
         self.graph_ = graph
-        self.badj_ = badj
         self.results_ = [] # Reset results at each call
         # Community detection done here (results stored in self.results_)
         self.__detect_communitites()
@@ -270,7 +268,7 @@ class ComDetMultiCriteria(CommunityDetector):
         proj1 = self.problem_.proj1_
 
         temp_results = [] # Before removing duplicates
-
+        badj = make_badj(self.graph_)
         for n in range(0,len(X)):
             sol_edges = []
             for i in range(0,n_var):
@@ -286,8 +284,8 @@ class ComDetMultiCriteria(CommunityDetector):
             
             proj0_labels=[m[i] for i in proj0] # Community memberships for the 1st two-mode projected graph
             proj1_labels=[m[i] for i in proj1] # Community memberships for the 2nd two-mode projected graph
-            modularity_score_barber = sknetwork.clustering.bimodularity(self.problem_.badj_,proj0_labels,proj1_labels)
-            modularity_score_murata = modularity_murata(self.badj_,proj0_labels+proj1_labels)
+            modularity_score_barber = sknetwork.clustering.bimodularity(badj,proj0_labels,proj1_labels)
+            modularity_score_murata = modularity_murata(badj,proj0_labels+proj1_labels)
             modularity_score_1 = self.problem_.graph_proj1_.modularity(proj0_labels,weights=self.problem_.graph_proj1_.es['weight'])#
             modularity_score_2 = self.problem_.graph_proj2_.modularity(proj1_labels,weights=self.problem_.graph_proj2_.es['weight'])
 
@@ -298,7 +296,7 @@ class ComDetMultiCriteria(CommunityDetector):
             clust = cdlib.NodeClustering(communities, graph=None, method_name=self.name_)
             conductance = cdlib.evaluation.conductance(self.graph_,clust)
             coverage = cdlib.evaluation.edges_inside(self.graph_,clust)
-            performance = bi_performance(self.badj_, proj0_labels+proj1_labels)
+            performance = bi_performance(badj, proj0_labels+proj1_labels)
             gini = skbio.diversity.alpha.gini_index([len(c) for c in communities])
             
             # Returning a tuple instead in order to remove coordinates
@@ -403,6 +401,23 @@ def modularity_murata(badj,communities):
         q += (e[i][j] - a[i]*a[j])
     return q
 
+def make_badj(graph):
+    """
+    Turn an igraph object into a biadjency matrix from the edgelist.
+    """
+    vertex_map = {}  ## Map true id to bipartite id.
+    lid,uid = 0,0
+    for v in graph.vs():
+        if v['name'] == 1:
+            bid = uid
+            uid += 1
+        else:
+            bid = lid
+            lid += 1
+        vertex_map[v.index] = bid
+    edge_list = [(vertex_map[e.source],vertex_map[e.target]) for e in graph.es]
+    badj = sknetwork.utils.edgelist2biadjacency(edge_list)
+    return badj
 
 ########################### Some tests
 

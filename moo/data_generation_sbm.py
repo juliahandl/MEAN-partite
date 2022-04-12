@@ -37,7 +37,7 @@ class DataGenerator():
         return f'<DataGenerator: {self.expconfig.__str__()[1:-1]}>'
 
     def generate_data(self):
-        np.random.seed(seed=self.expconfig.seed)
+        rng = np.random.default_rng(seed=self.expconfig.seed)
         shuffle = self.expconfig.shuffle
         
         L = self.expconfig.L
@@ -74,16 +74,16 @@ class DataGenerator():
 
         for it in range(self.expconfig.NumGraphs):
             ## Sample the top nodes for each edge.
-            source_nodes = np.random.choice(n_bottom,size=self.expconfig.NumEdges)
+            source_nodes = rng.choice(n_bottom,size=self.expconfig.NumEdges)
 
             ## Calculate the probability to determine the community of the bottom node for each edge.
-            comm_probs = np.random.rand(self.expconfig.NumEdges)
+            comm_probs = rng.random(self.expconfig.NumEdges)
 
             ## Turn the probabilities into communities to target.
-            target_comms = [comm_labels[source_nodes[i]] if p > BC else np.random.choice(off_comms[comm_labels[source_nodes[i]]]) for i,p in enumerate(comm_probs)]
+            target_comms = [comm_labels[source_nodes[i]] if p > BC else rng.choice(off_comms[comm_labels[source_nodes[i]]]) for i,p in enumerate(comm_probs)]
 
             ## Sample the target nodes from the communities.
-            target_nodes = [np.random.choice(comm_nodes[c]) for c in target_comms]
+            target_nodes = [rng.choice(comm_nodes[c]) for c in target_comms]
 
             edges = list(zip(source_nodes,target_nodes))
 
@@ -92,10 +92,10 @@ class DataGenerator():
                 print('resampling duplicate edges, %d to go' % (len(edges)-len(set(edges))))
                 edges = list(set(edges))
                 ## We have a duplicate edge, resample it.
-                sn = np.random.choice(n_bottom,size=self.expconfig.NumEdges-len(edges))
-                cp = np.random.rand(self.expconfig.NumEdges-len(edges))
-                tc = [comm_labels[sn[i]] if p > BC else np.random.choice(off_comms[comm_labels[sn[i]]]) for i,p in enumerate(cp)]
-                tn = [np.random.choice(comm_nodes[c]) for c in tc]
+                sn = rng.choice(n_bottom,size=self.expconfig.NumEdges-len(edges))
+                cp = rng.random(self.expconfig.NumEdges-len(edges))
+                tc = [comm_labels[sn[i]] if p > BC else rng.choice(off_comms[comm_labels[sn[i]]]) for i,p in enumerate(cp)]
+                tn = [rng.choice(comm_nodes[c]) for c in tc]
                 edges += list(zip(sn,tn))
      
         

@@ -8,8 +8,8 @@ if use_sbm:
     from moo.data_generation_sbm import ExpConfig, DataGenerator
 else:
     from moo.data_generation import ExpConfig, DataGenerator
-from moo.contestant_bilouvain import get_best_community_solutions, draw_best_community_solutions
-import moo.contestant_bilouvain as contestant
+from moo.contestant_bimod import get_best_community_solutions, draw_best_community_solutions
+import moo.contestant_bimod as contestant
 from moo.multicriteria_bimod import ComDetMultiCriteria
 import matplotlib.pyplot as plt
 import sknetwork
@@ -21,8 +21,8 @@ start = time.time()
 ## Run the data loading.
 if use_sbm:
     expconfig = ExpConfig(
-    L=[2500,2500], U=[2500,2500], NumEdges=7500, BC=0.1, NumGraphs=5,
-    shuffle=False, seed=24#42
+    L=[15,15], U=[15,15], NumEdges=200, BC=0.1, NumGraphs=5,
+    shuffle=True, seed=24#42
     )
 else:
     expconfig = ExpConfig(
@@ -44,12 +44,12 @@ start = time.time()
 
 ## Define the algorithms.
 algos = [
-    #contestant.ComDetMultiLevel(), # Multi-Level approach
+    contestant.ComDetMultiLevel(), # Multi-Level approach
     #contestant.ComDetEdgeBetweenness(), # EdgeBetweenness approach
-    #contestant.ComDetWalkTrap(), # WalkTrap approach
-    #contestant.ComDetFastGreedy(), # FastGreedy approach
-    contestant.ComDetBRIM(), # BRIM approach
-    #contestant.ComDetBiLouvain(), # sknetwork bilovain
+    contestant.ComDetWalkTrap(), # WalkTrap approach
+    contestant.ComDetFastGreedy(), # FastGreedy approach
+    #contestant.ComDetBRIM(), # BRIM approach
+    contestant.ComDetBiLouvain(), # sknetwork bilovain
     #ComDetMultiCriteria(  # 3D MO approach
     #name='3d',
     #params = {
@@ -81,13 +81,10 @@ for g_idx, graph in enumerate(datagen):
     print(f'Processing Graph {g_idx+1}')
     
     ## Generate badj to pass and save computation time.
-    lower = list(map(int, graph.vs['type'])).count(0)
-    edge_list = [(e.source,e.target-lower) for e in graph.es]
-    badj = sknetwork.utils.edgelist2biadjacency(edge_list)
     #code.interact(local=locals())
     for algo in algos:
         print(f'\tUsing algoithm {algo.name_}')
-        result = algo.detect_communities(graph=graph,badj=badj).get_results()
+        result = algo.detect_communities(graph=graph).get_results()
         # Result is a list of dictionaries, each dictionary stores the metrics of one iteration (see code for details)
         for r in result: # Appending graph index to results, for debugging purposes
             r['graph_idx'] = g_idx + 1

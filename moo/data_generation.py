@@ -53,13 +53,13 @@ class DataGenerator():
                 # Find an edge that does not yet exist and add
                 # Stochastically generate within community or between community edges
                 while added == False:
-                    if dice <= 50-BC/2:
+                    if dice < 50-BC/2:
                         index1 = rng.integers(0,L*ML-1) # class 0 vertex (in Lower graph part)
                         index2 = rng.integers(L,L+U*MU-1) # class 0 vertex (in Upper graph part)
-                    elif dice <= 50:
+                    elif dice < 50:
                         index1 = rng.integers(0,L*ML-1) # class 0 vertex (in Lower graph part)
                         index2 = rng.integers(L+U*MU,L+U-1) # class 1 vertex (in Upper graph part)
-                    elif dice <= 50+BC/2:
+                    elif dice < 50+BC/2:
                         index1 = rng.integers(L*ML,L-1)  # class 1 vertex (in Lower graph part)
                         index2 = rng.integers(L,L+U*MU-1) # class 0 vertex (in Upper graph part)
                     elif dice >= 50+BC/2:

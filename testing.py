@@ -33,5 +33,7 @@ print('Error in Barber modularity calculation: %f' % (abs(qb-true_qb)))
 
 ## Check the calculation of Murata's modularity.
 qm = contestant.modularity_murata(badj,low_gt+up_gt)
+true_qm = 115/484
+print('Error in Murata modularity calculation: %f' % (abs(qm-true_qm)))
 
 code.interact(local=locals())

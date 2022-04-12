@@ -893,7 +893,7 @@ def modularity_murata(badj,communities):
     e /= 2*np.sum(e)
 
     ## Make the a array, the row sums of the e array.
-    a = np.sum(e,axis=0)
+    a = np.sum(e,axis=1)
     
     ## Now we calculate Q, the sum of max observed difference.
     q = 0

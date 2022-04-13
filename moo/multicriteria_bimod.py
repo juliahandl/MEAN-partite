@@ -183,7 +183,7 @@ class ComDetMultiCriteria(CommunityDetector):
         return
 
     def init_problem(self):
-        self.problem_ = MultiCriteriaProblem(mode=self.params_['mode'], graph=self.graph_, badj=self.badj_)
+        self.problem_ = MultiCriteriaProblem(mode=self.params_['mode'], graph=self.graph_)
         
     def initialize_pop(self):
         popsize = self.params_['popsize']

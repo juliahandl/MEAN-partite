@@ -150,7 +150,7 @@ class ComDetEdgeBetweenness(CommunityDetector):
         super().check_graph(graph)
         # Additional checks go here
 
-    def detect_communities(self, graph, badj, y=None):
+    def detect_communities(self, graph, y=None):
         #TODO: fit instead of this and y as groundtruth or None to infer from the graph
         # Some checks
         self.check_graph(graph)
@@ -635,10 +635,12 @@ class ComDetBRIM(CommunityDetector):
         net["weight"]=1
 
         # Run the algorithm, suppressing its very verbose output
+        #code.interact(local=locals())
         with nostdout():
             co = condor.condor_object(net)
             co = condor.initial_community(co, **self.params_)
-            co = condor.brim(co)
+            #co['reg_memb']['community'] = (co['reg_memb']['community'] % 2)
+            co = condor.brim(co)#,c=max(co['reg_memb'].iloc[:,1])+1)
 
         # groundtruth1 = ground_truth[0:lower]
         # groundtruth2 = ground_truth[lower:n_vertices]
@@ -710,7 +712,7 @@ class ComDetBRIM(CommunityDetector):
         coverage = cdlib.evaluation.edges_inside(self.graph_,clust).score
         performance = bi_performance(badj, combined_memb["com"].tolist())
         gini = skbio.diversity.alpha.gini_index([len(c) for c in communities])
-            
+
         result = dict(
                 name=self.name_,
                 num_clusters = k,

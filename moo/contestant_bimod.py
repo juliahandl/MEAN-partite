@@ -110,7 +110,7 @@ class ComDetFastGreedy(CommunityDetector):
             clust = cdlib.NodeClustering(communities, graph=None, method_name=self.name_)
             conductance = cdlib.evaluation.conductance(self.graph_,clust).score
             coverage = cdlib.evaluation.edges_inside(self.graph_,clust).score
-            performance = bi_performance(badj, vx_clustering.membership)
+            performance = bi_performance(badj, proj0_labels + proj1_labels)
             gini = skbio.diversity.alpha.gini_index([len(c) for c in communities])
             
             result = dict(
@@ -196,7 +196,7 @@ class ComDetEdgeBetweenness(CommunityDetector):
             clust = cdlib.NodeClustering(communities, graph=None, method_name=self.name_)
             conductance = cdlib.evaluation.conductance(self.graph_,clust).score
             coverage = cdlib.evaluation.edges_inside(self.graph_,clust).score
-            performance = bi_performance(badj, vx_clustering.membership)
+            performance = bi_performance(badj, proj0_labels+proj1_labels)
             gini = skbio.diversity.alpha.gini_index([len(c) for c in communities])
             
             result = dict(
@@ -283,7 +283,7 @@ class ComDetWalkTrap(CommunityDetector):
             clust = cdlib.NodeClustering(communities, graph=None, method_name=self.name_)
             conductance = cdlib.evaluation.conductance(self.graph_,clust).score
             coverage = cdlib.evaluation.edges_inside(self.graph_,clust).score
-            performance = bi_performance(badj, vx_clustering.membership)
+            performance = bi_performance(badj, proj0_labels+proj1_labels)
             gini = skbio.diversity.alpha.gini_index([len(c) for c in communities])
             
             result = dict(
@@ -429,7 +429,7 @@ class ComDetMultiLevel(CommunityDetector):
             clust = cdlib.NodeClustering(communities, graph=None, method_name=self.name_)
             conductance = cdlib.evaluation.conductance(self.graph_,clust).score
             coverage = cdlib.evaluation.edges_inside(self.graph_,clust).score
-            performance = bi_performance(badj, newlabels)
+            performance = bi_performance(badj, proj0_labels+proj1_labels)
             gini = skbio.diversity.alpha.gini_index([len(c) for c in communities])
             
             result = dict(
@@ -710,7 +710,7 @@ class ComDetBRIM(CommunityDetector):
 
         conductance = cdlib.evaluation.conductance(self.graph_,clust).score
         coverage = cdlib.evaluation.edges_inside(self.graph_,clust).score
-        performance = bi_performance(badj, combined_memb["com"].tolist())
+        performance = bi_performance(badj, tar_memb["com"].tolist()+reg_memb["com"].tolist())
         gini = skbio.diversity.alpha.gini_index([len(c) for c in communities])
 
         result = dict(
@@ -770,6 +770,9 @@ class ComDetBiLouvain(CommunityDetector):
         upper = vertices.count(1)
         n_vertices = len(self.graph_.vs)
         ground_truth = self.graph_.vs['GT']
+        ## To work with the bilabels, we need to make gt0 and gt1 list proj0.
+        gt0 = [v['GT'] for v in self.graph_.vs if v['type'] == 0]
+        gt1 = [v['GT'] for v in self.graph_.vs if v['type'] == 1]
         proj0 = [i for i, val in enumerate(vertices) if val == 0]
         proj1 = [i for i, val in enumerate(vertices) if val == 1]
         graph_proj1, graph_proj2 = self.graph_.bipartite_projection(multiplicity=True)
@@ -780,19 +783,24 @@ class ComDetBiLouvain(CommunityDetector):
         
         ## Now we fit bilouvain to the graph.
         bilouvain.fit(badj,force_bipartite=True)
-       
+        #code.interact(local=locals())
         proj0_labels=list(bilouvain.labels_row_)
         proj1_labels=list(bilouvain.labels_col_)
-        modularity_score = self.graph_.modularity(proj0_labels+proj1_labels)
+        graph_labels = [0]*len(ground_truth)
+        for i,lab in zip(proj0,proj0_labels):
+            graph_labels[i] = lab
+        for i,lab in zip(proj1,proj1_labels):
+            graph_labels[i] = lab
+        modularity_score = self.graph_.modularity(graph_labels)
         modularity_score_barber = sknetwork.clustering.bimodularity(badj,proj0_labels,proj1_labels)
         
         modularity_score_murata = modularity_murata(badj,proj0_labels+proj1_labels)
         modularity_score_1 = graph_proj1.modularity(proj0_labels, weights=graph_proj1.es['weight'])
         modularity_score_2 = graph_proj2.modularity(proj1_labels, weights=graph_proj2.es['weight'])
-        adj_rand_index = adjusted_rand_score(ground_truth,proj0_labels+proj1_labels)
+        adj_rand_index = adjusted_rand_score(gt0+gt1,proj0_labels+proj1_labels)
         
         communities = [[] for i in range(max(proj0_labels+proj1_labels)+1)] ## List of list of node ids.
-        for i,lab in enumerate(proj0_labels+proj1_labels):
+        for i,lab in enumerate(graph_labels):
             communities[lab].append(i)
         clust = cdlib.NodeClustering(communities, graph=None, method_name=self.name_)
         conductance = cdlib.evaluation.conductance(self.graph_,clust).score

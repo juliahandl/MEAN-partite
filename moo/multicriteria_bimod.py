@@ -18,6 +18,7 @@ from moo.contestant import CommunityDetector
 import sknetwork
 import cdlib
 import skbio
+import code
 
 class MultiCriteriaProblem(ElementwiseProblem):
     """
@@ -290,7 +291,7 @@ class ComDetMultiCriteria(CommunityDetector):
             modularity_score_2 = self.problem_.graph_proj2_.modularity(proj1_labels,weights=self.problem_.graph_proj2_.es['weight'])
 
             communities = [[] for i in range(max(proj0_labels+proj1_labels)+1)] ## List of list of node ids.
-            for i,lab in enumerate(proj0_labels+proj1_labels):
+            for i,lab in enumerate(m):
                 communities[lab].append(i)
             communities = [c for c in communities if c]
             clust = cdlib.NodeClustering(communities, graph=None, method_name=self.name_)
@@ -406,6 +407,7 @@ def make_badj(graph):
     Turn an igraph object into a biadjency matrix from the edgelist.
     """
     vertex_map = {}  ## Map true id to bipartite id.
+    vertex_type = {}
     lid,uid = 0,0
     for v in graph.vs():
         if v['name'] == 1:
@@ -415,8 +417,11 @@ def make_badj(graph):
             bid = lid
             lid += 1
         vertex_map[v.index] = bid
-    edge_list = [(vertex_map[e.source],vertex_map[e.target]) for e in graph.es]
-    badj = sknetwork.utils.edgelist2biadjacency(edge_list)
+        vertex_type[v.index] = v['name']
+    edge_list = [(e.source,e.target) for e in graph.es]  ## Extract the edges.
+    edge_list = [(s,t) if vertex_type[t] else (t,s) for s,t in edge_list]  ## Order them so the bottom node is first.
+    edge_list = [(vertex_map[s],vertex_map[t]) for s,t in edge_list]  ## Map them to bipartite ids.
+    badj = sknetwork.utils.edgelist2biadjacency(edge_list)  ## Make the adjacency matrix.
     return badj
 
 ########################### Some tests

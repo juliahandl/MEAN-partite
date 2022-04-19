@@ -124,6 +124,13 @@ class DataGenerator():
                 g_i_new.vs['VX'] = vT # Vertices
                 g_i_new.vs['name'] = vT # Vertices
                 g_i_new.vs['GT'] = groundtruth # Ground truth
+                ## Write g to file.
+                if filename:
+                    try:
+                        g.write_gml(filename+'_%d.gml' % it)
+                    except FileNotFoundError:
+                        print('ERROR: You need to create the specified directory.')
+                        exit()
                 yield g_i_new #, vT, groundtruth,
             else:
                 #T = [groundtruth[i] for i in g_i.clusters()[index_max]]

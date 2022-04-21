@@ -104,7 +104,7 @@ class ComDetMultiCriteria(CommunityDetector):
     def __init__(
         self, name="multicriteria",
         params={'mode': '3d', 'popsize': 50, 'termination': None, 'save_history': True, 'seed': None},
-        min_num_clusters=1, max_num_clusters=15
+        min_num_clusters=1, max_num_clusters=30
         ):
 
         self.name_ = name

@@ -49,7 +49,7 @@ class CommunityDetector():
 
 
 class ComDetFastGreedy(CommunityDetector):
-    def __init__(self, name= "fastgreedy", params = {'weights': None}, min_num_clusters=1, max_num_clusters=15) -> None:
+    def __init__(self, name= "fastgreedy", params = {'weights': None}, min_num_clusters=1, max_num_clusters=30) -> None:
         #TODO: A range of cluster with a possibility to generate automatically (str argument)
         super().__init__(name)
         self.params_ = params
@@ -136,7 +136,7 @@ class ComDetFastGreedy(CommunityDetector):
 
 
 class ComDetEdgeBetweenness(CommunityDetector):
-    def __init__(self, name= "edgebetweenness", params = {'directed': False, 'weights': None}, min_num_clusters=1, max_num_clusters=15) -> None:
+    def __init__(self, name= "edgebetweenness", params = {'directed': False, 'weights': None}, min_num_clusters=1, max_num_clusters=30) -> None:
         #TODO: A range of cluster with a possibility to generate automatically (str argument)
         super().__init__(name)
         self.params_ = params
@@ -222,7 +222,7 @@ class ComDetEdgeBetweenness(CommunityDetector):
 
 
 class ComDetWalkTrap(CommunityDetector):
-    def __init__(self, name= "walktrap", params = {'weights': None, 'steps': 4}, min_num_clusters=1, max_num_clusters=15) -> None:
+    def __init__(self, name= "walktrap", params = {'weights': None, 'steps': 4}, min_num_clusters=1, max_num_clusters=30) -> None:
         #TODO: A range of cluster with a possibility to generate automatically (str argument)
         super().__init__(name)
         self.params_ = params
@@ -309,7 +309,7 @@ class ComDetWalkTrap(CommunityDetector):
 
 
 class ComDetMultiLevel(CommunityDetector):
-    def __init__(self, name= "multilevel", params = {'weights': None, 'return_levels': False}, min_num_clusters=1, max_num_clusters=15) -> None:
+    def __init__(self, name= "multilevel", params = {'weights': None, 'return_levels': False}, min_num_clusters=1, max_num_clusters=30) -> None:
         #TODO: A range of cluster with a possibility to generate automatically (str argument)
         super().__init__(name)
         self.params_ = params
@@ -455,7 +455,7 @@ class ComDetMultiLevel(CommunityDetector):
 
 
 class ComDetBRIMNoPert(CommunityDetector):
-    def __init__(self, name= "brim", params = {'method': 'LCS', 'project': False}, min_num_clusters=1, max_num_clusters=15) -> None:
+    def __init__(self, name= "brim", params = {'method': 'LCS', 'project': False}, min_num_clusters=1, max_num_clusters=30) -> None:
         #TODO: A range of cluster with a possibility to generate automatically (str argument)
         super().__init__(name)
         self.params_ = params
@@ -559,7 +559,7 @@ class ComDetBRIMNoPert(CommunityDetector):
 
 
 class ComDetBRIM(CommunityDetector):
-    def __init__(self, name= "brim", params = {'method': 'LCS', 'project': False}, min_num_clusters=1, max_num_clusters=15) -> None:
+    def __init__(self, name= "brim", params = {'method': 'LCS', 'project': False}, min_num_clusters=1, max_num_clusters=30) -> None:
         #TODO: A range of cluster with a possibility to generate automatically (str argument)
         super().__init__(name)
         self.params_ = params
@@ -640,7 +640,12 @@ class ComDetBRIM(CommunityDetector):
             co = condor.condor_object(net)
             co = condor.initial_community(co, **self.params_)
             #co['reg_memb']['community'] = (co['reg_memb']['community'] % 2)
-            co = condor.brim(co)#,c=max(co['reg_memb'].iloc[:,1])+1)
+            
+        if max(co['reg_memb'].iloc[:,1])+1 > self.max_num_clusters_:
+            print('BRIM found too many communities in the initial assignment. Try increasing max_num_clusters above %d.' % self.max_num_clusters_)
+            exit()
+        with nostdout():
+            co = condor.brim(co,c=self.max_num_clusters_)#,c=max(co['reg_memb'].iloc[:,1])+1)
 
         # groundtruth1 = ground_truth[0:lower]
         # groundtruth2 = ground_truth[lower:n_vertices]
@@ -738,7 +743,7 @@ class ComDetBRIM(CommunityDetector):
 #TODO Compare condor results for the current version and the old version 1.1 that Julia used
 
 class ComDetBiLouvain(CommunityDetector):
-    def __init__(self, name= "bilouvain", params = {'weights': None}, min_num_clusters=1, max_num_clusters=15) -> None:
+    def __init__(self, name= "bilouvain", params = {'weights': None}, min_num_clusters=1, max_num_clusters=30) -> None:
         #TODO: A range of cluster with a possibility to generate automatically (str argument)
         super().__init__(name)
         self.params_ = params

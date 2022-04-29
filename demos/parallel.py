@@ -15,8 +15,8 @@ import pandas as pd
 import time
 
 expconfig = ExpConfig(
-    L=100, U=500,
-    NumEdges=1000, ML=0.4, MU=0.4,
+    L=[40,60], U=[200,300],
+    NumEdges=1000,
     BC=0.1, NumGraphs=30,
     shuffle=True, 
     seed=1234  

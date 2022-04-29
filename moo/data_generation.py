@@ -1,5 +1,6 @@
 import igraph
 import numpy as np
+import code
 
 class ExpConfig():
     '''
@@ -7,24 +8,26 @@ class ExpConfig():
     to generate the dataset (graphs) for community detection 
     '''
     def __init__(
-        self, L=100, U=100, NumEdges=200, ML=0.4, MU=0.4, BC=0.2,
-        NumGraphs=30, shuffle=True, seed=None):
+        self, L=[40,60], U=[40,60], NumEdges=200, BC=0.2,
+        NumGraphs=30, shuffle=True, seed=None,filename=''):
+        
+        assert len(L) == len(U), 'This generator only supports the same number of communities in each mode'
+        
         self.L = L # L vertices (lower graph part)
-        self.U = U # U vertices (lower graph part)
+        self.U = U # U vertices (upper graph part)
         self.NumEdges=NumEdges
         
-        self.ML = ML # Probability of lower nodes belonging to class 0
-        self.MU = MU # Probability of upper nodes belonging to class 0
+        self.BC = BC # Matching probabilities for the communities.
         self.NumGraphs = NumGraphs # Number of graphs to generate for this experiment
-        self.BC = BC # Percentage of cross-community edges
 
-        self.NumNodes = L+U # Number of graph nodes
-        self.Vertices = [0] * int(self.L) + [1] * int(self.U)
+        self.NumNodes = sum(L)+sum(U) # Number of graph nodes
+        self.Vertices = [0] * sum(self.L) + [1] * sum(self.U)
         self.shuffle=shuffle
         self.seed = 42 if seed is None else seed
+        self.filename=filename
     
     def __str__(self) -> str:
-        return f'<ExpConfig: L={self.L}, U={self.U}, NumNodes={self.NumNodes}, NumEdges={self.NumEdges}, ML={self.ML}, MU={self.MU}, BC={self.BC}, NumGraphs={self.NumGraphs}, shuffle={self.shuffle}, seed={self.seed}>'
+        return f'<ExpConfig: filename={self.filename}, L={self.L}, U={self.U}, NumNodes={self.NumNodes}, NumEdges={self.NumEdges}, BC={self.BC}, NumGraphs={self.NumGraphs}, shuffle={self.shuffle}, seed={self.seed}>'
 
 
 class DataGenerator():
@@ -38,42 +41,68 @@ class DataGenerator():
         rng = np.random.default_rng(seed=self.expconfig.seed)
         shuffle = self.expconfig.shuffle
         
-        BC = int(100 * self.expconfig.BC)  # Specify percentage cross-community edges
         L = self.expconfig.L
         U = self.expconfig.U
-        ML = self.expconfig.ML
-        MU = self.expconfig.MU
+        BC = self.expconfig.BC
+        filename = self.expconfig.filename
         vertices = self.expconfig.Vertices
+        
+        ## Make some useful calculations to save time.
+        n_top = sum(U)
+        n_bottom = sum(L)
+        n_top_comms = len(U)
+        n_bottom_comms = len(L)
+        
+        i = 0
+        comm_labels = {}  ## This dict will give node id: community label with numbering sequentially across both modes, starting from 0.
+        ## That is, the first node in the bottom set has id n_top and the first bottom community has id len(community_prefs[0]).
+        for m in (L,U):
+            for j,c in enumerate(m):
+                for n in range(c):
+                    comm_labels[i] = j
+                    i += 1
+
+        ## Reverse this dict to get a list of bottom node ids within each community label.
+        comm_nodes = {}
+        for k in comm_labels:
+            if k >= n_bottom:  ## We only care about mapping the top nodes.
+                if comm_nodes.get(comm_labels[k]):
+                    comm_nodes[comm_labels[k]].append(k)
+                else:
+                    comm_nodes[comm_labels[k]] = [k]
+
+        ## Make a dict of out of community maps to save time later.
+        off_comms = {i:[j for j in range(n_top_comms) if j != i] for i in range(n_bottom_comms)}
+
         for it in range(self.expconfig.NumGraphs):
-            edges = []
-            for i in range(0, self.expconfig.NumEdges):
-                dice = rng.integers(0,100)
-                added = False
-            
-                # Find an edge that does not yet exist and add
-                # Stochastically generate within community or between community edges
-                while added == False:
-                    if dice <= 50-BC/2:
-                        index1 = rng.integers(0,L*ML-1) # class 0 vertex (in Lower graph part)
-                        index2 = rng.integers(L,L+U*MU-1) # class 0 vertex (in Upper graph part)
-                    elif dice <= 50:
-                        index1 = rng.integers(0,L*ML-1) # class 0 vertex (in Lower graph part)
-                        index2 = rng.integers(L+U*MU,L+U-1) # class 1 vertex (in Upper graph part)
-                    elif dice <= 50+BC/2:
-                        index1 = rng.integers(L*ML,L-1)  # class 1 vertex (in Lower graph part)
-                        index2 = rng.integers(L,L+U*MU-1) # class 0 vertex (in Upper graph part)
-                    elif dice >= 50+BC/2:
-                        index1 = rng.integers(L*ML,L-1) # class 1 vertex (in Lower graph part)
-                        index2 = rng.integers(L+U*MU,L+U-1) # class 1 vertex (in Upper graph part)
+            ## Sample the top nodes for each edge.
+            source_nodes = rng.choice(n_bottom,size=self.expconfig.NumEdges)
 
-                    newedge = [index1,index2]
+            ## Calculate the probability to determine the community of the bottom node for each edge.
+            comm_probs = rng.random(self.expconfig.NumEdges)
 
-                    if not (newedge in edges):
-                        edges.append(newedge)
-                        added = True
+            ## Turn the probabilities into communities to target.
+            target_comms = [comm_labels[source_nodes[i]] if p > BC else rng.choice(off_comms[comm_labels[source_nodes[i]]]) for i,p in enumerate(comm_probs)]
+
+            ## Sample the target nodes from the communities.
+            target_nodes = [rng.choice(comm_nodes[c]) for c in target_comms]
+
+            edges = list(zip(source_nodes,target_nodes))
+
+            ## Resample any duplicate edges.
+            while len(edges) != len(set(edges)):
+                #print('resampling duplicate edges, %d to go' % (len(edges)-len(set(edges))))
+                edges = list(set(edges))
+                ## We have a duplicate edge, resample it.
+                sn = rng.choice(n_bottom,size=self.expconfig.NumEdges-len(edges))
+                cp = rng.random(self.expconfig.NumEdges-len(edges))
+                tc = [comm_labels[sn[i]] if p > BC else rng.choice(off_comms[comm_labels[sn[i]]]) for i,p in enumerate(cp)]
+                tn = [rng.choice(comm_nodes[c]) for c in tc]
+                edges += list(zip(sn,tn))
+     
         
             # Specify original ground truth
-            groundtruth=[0]*int(L*ML)+[1]*int(L*(1-ML))+[0]*int(U*MU)+[1]*int(U*(1-MU))
+            groundtruth=[comm_labels[i] for i in range(sum(U)+sum(L))]
             # shapes = ["rectangle"] * int(L*ML) + ["circle"] * int(L*(1-ML)) + ["rectangle"] * int(U*MU) + ["circle"] * int(U*(1-MU))
 
             # Reduce to giant component
@@ -81,7 +110,7 @@ class DataGenerator():
         
             index_max = np.argmax(g_i.components().sizes()) # Get the largest graph component
             # print(g_i.components().sizes())
-
+            
             if not shuffle:
                 T = [groundtruth[i] for i in g_i.clusters()[index_max]]
                 vT = [vertices[i] for i in g_i.clusters()[index_max]]
@@ -93,7 +122,15 @@ class DataGenerator():
 
                 # Setting attributes
                 g_i_new.vs['VX'] = vT # Vertices
+                g_i_new.vs['name'] = vT # Vertices
                 g_i_new.vs['GT'] = groundtruth # Ground truth
+                ## Write g to file.
+                if filename:
+                    try:
+                        g.write_gml(filename+'_%d.gml' % it)
+                    except FileNotFoundError:
+                        print('ERROR: You need to create the specified directory.')
+                        exit()
                 yield g_i_new #, vT, groundtruth,
             else:
                 #T = [groundtruth[i] for i in g_i.clusters()[index_max]]
@@ -168,7 +205,17 @@ class DataGenerator():
 
                 # Setting attributes
                 g.vs['VX'] = topbottom # Vertices
+                g.vs['name'] = topbottom # Vertices
                 g.vs['GT'] = labels # Ground truth
+
+                ## Write g to file.
+                if filename:
+                    try:
+                        g.write_gml(filename+'_%d.gml' % it)
+                    except FileNotFoundError:
+                        print('ERROR: You need to create the specified directory.')
+                        exit()
+
                 yield g#, vT, groundtruth,
 
 
@@ -194,8 +241,8 @@ def graphs_equal(g1, g2, attribs):
 def test_create_datagen():
     rng = np.random.default_rng()
     seed = rng.integers(low=0, high=1000000, size=1)
-    # expconfig= ExpConfig(L=20, U=100, NumEdges=200, ML=0.4, MU=0.4, BC=0.2, NumGraphs=30, shuffle=True, seed=seed)
-    expconfig= ExpConfig(L=100, U=500, NumEdges=1000, ML=0.4, MU=0.4, BC=0.1, NumGraphs=30, shuffle=True, seed=seed)
+    # expconfig= ExpConfig(L=[8,12], U=[40,60], NumEdges=200, BC=0.2, NumGraphs=30, shuffle=True, seed=seed)
+    expconfig= ExpConfig(L=[40,60], U=[200,300], NumEdges=1000, BC=0.1, NumGraphs=30, shuffle=True, seed=seed)
 
     print(expconfig)
     expgen = DataGenerator(expconfig=expconfig)
@@ -216,10 +263,10 @@ def test_datagen_reproducibility(num_tests=1, attribs=['VX', 'GT']):
         rng = np.random.default_rng()
         seed = rng.integers(low=0, high=1000000, size=1)
         print(f"\tConfig {i} using seed {seed}:", sep= ' ')
-        # expconfig1= ExpConfig(L=20, U=100, NumEdges=200, ML=0.4, MU=0.4, BC=0.2, NumGraphs=30, shuffle=True, seed=seed)
-        # expconfig2= ExpConfig(L=20, U=100, NumEdges=200, ML=0.4, MU=0.4, BC=0.2, NumGraphs=30, shuffle=True, seed=seed)
-        expconfig1= ExpConfig(L=100, U=500, NumEdges=1000, ML=0.4, MU=0.4, BC=0.1, NumGraphs=30, shuffle=True, seed=seed)
-        expconfig2= ExpConfig(L=100, U=500, NumEdges=1000, ML=0.4, MU=0.4, BC=0.1, NumGraphs=30, shuffle=True, seed=seed)
+        # expconfig1= ExpConfig(L=[8,12], U=[40,60], NumEdges=200, BC=0.2, NumGraphs=30, shuffle=True, seed=seed)
+        # expconfig2= ExpConfig(L=[8,12], U=[40,60], NumEdges=200, BC=0.2, NumGraphs=30, shuffle=True, seed=seed)
+        expconfig1= ExpConfig(L=[40,60], U=[200,300], NumEdges=1000, BC=0.1, NumGraphs=30, shuffle=True, seed=seed)
+        expconfig2= ExpConfig(L=[40,60], U=[200,300], NumEdges=1000, BC=0.1, NumGraphs=30, shuffle=True, seed=seed)
         expgen1 = DataGenerator(expconfig=expconfig1)
         expgen2 = DataGenerator(expconfig=expconfig2)
         datagen1 = expgen1.generate_data()

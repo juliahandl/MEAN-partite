@@ -19,8 +19,8 @@ pd <- import("pandas")
 
 
 expconfig <- moo_datagen$ExpConfig(
-  L=100L, U=100L,
-  NumEdges=1000L, ML=0.5, MU=0.5,
+  L=list(50L,50L), U=list(50L,50L),
+  NumEdges=1000L,
   BC=0.2, NumGraphs=5L, # Was 30L
   shuffle=TRUE, 
   seed=1234L  

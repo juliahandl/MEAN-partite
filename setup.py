@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(name='moo',
     version='0.1.1',
     description='multi objective optimisation for bipartite graphs',
-    url='https://github.com/UoMResearchIT/mo-community-detection-bipartite',
+    url='https://github.com/leospinaf/BipartiteMOEA',
     author='Julia Handl/Hichem Barki',
     author_email='todo',
     license='todo',
@@ -16,6 +16,9 @@ setup(name='moo',
     'condor @ git+https://git@github.com/genisott/pycondor.git@389932cfa4d1954aef7d1b725a33a6b2ef018de2#egg=condor',
     'seaborn',
     'tqdm',
-    'psutil'
+    'psutil',
+    'scikit-network',
+    'cdlib',
+    'scikit-bio'
     ],
     zip_safe=False)

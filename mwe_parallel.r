@@ -2,9 +2,7 @@ library(reticulate)
 library(igraph)
 library(tidyverse)
 
-use_python("C:/Users/trist/AppData/Local/Programs/Python/Python310/python.exe")
-
-#use_virtualenv("./venv")
+use_virtualenv("./venv")
 
 moo <- import("moo")
 moo_datagen <- import("moo.data_generation")

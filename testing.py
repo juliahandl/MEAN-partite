@@ -1,8 +1,8 @@
 ## This script tests individual features added in the newest version for correctness.
 
-import moo.data_generation_sbm as data_generation
-import moo.contestant_bimod as contestant
-import moo.multicriteria_bimod as multicriteria
+import moo.data_generation as data_generation
+import moo.contestant as contestant
+import moo.multicriteria as multicriteria
 import code
 import sknetwork
 

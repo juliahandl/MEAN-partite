@@ -15,7 +15,10 @@ from pymoo.optimize import minimize
 from pymoo.factory import get_sampling, get_crossover, get_mutation, get_termination
 from pymoo.indicators.hv import Hypervolume
 from moo.contestant import CommunityDetector
-
+import sknetwork
+import cdlib
+import skbio
+import code
 
 class MultiCriteriaProblem(ElementwiseProblem):
     """
@@ -101,7 +104,7 @@ class ComDetMultiCriteria(CommunityDetector):
     def __init__(
         self, name="multicriteria",
         params={'mode': '3d', 'popsize': 50, 'termination': None, 'save_history': True, 'seed': None},
-        min_num_clusters=1, max_num_clusters=15
+        min_num_clusters=1, max_num_clusters=30
         ):
 
         self.name_ = name
@@ -266,7 +269,7 @@ class ComDetMultiCriteria(CommunityDetector):
         proj1 = self.problem_.proj1_
 
         temp_results = [] # Before removing duplicates
-
+        badj = make_badj(self.graph_)
         for n in range(0,len(X)):
             sol_edges = []
             for i in range(0,n_var):
@@ -282,15 +285,27 @@ class ComDetMultiCriteria(CommunityDetector):
             
             proj0_labels=[m[i] for i in proj0] # Community memberships for the 1st two-mode projected graph
             proj1_labels=[m[i] for i in proj1] # Community memberships for the 2nd two-mode projected graph
-            
+            modularity_score_barber = sknetwork.clustering.bimodularity(badj,proj0_labels,proj1_labels)
+            modularity_score_murata = modularity_murata(badj,proj0_labels+proj1_labels)
             modularity_score_1 = self.problem_.graph_proj1_.modularity(proj0_labels,weights=self.problem_.graph_proj1_.es['weight'])#
             modularity_score_2 = self.problem_.graph_proj2_.modularity(proj1_labels,weights=self.problem_.graph_proj2_.es['weight'])
 
+            communities = [[] for i in range(max(proj0_labels+proj1_labels)+1)] ## List of list of node ids.
+            for i,lab in enumerate(m):
+                communities[lab].append(i)
+            communities = [c for c in communities if c]
+            clust = cdlib.NodeClustering(communities, graph=None, method_name=self.name_)
+            conductance = cdlib.evaluation.conductance(self.graph_,clust).score
+            coverage = cdlib.evaluation.edges_inside(self.graph_,clust).score
+            performance = bi_performance(badj, proj0_labels+proj1_labels)
+            gini = skbio.diversity.alpha.gini_index([len(c) for c in communities])
+            
             # Returning a tuple instead in order to remove coordinates
             result = (
                 self.name_,
                  len(c), modularity_score, modularity_score_1,
-                modularity_score_2, adj_rand_index,
+                modularity_score_2, adj_rand_index, modularity_score_barber,
+                conductance, coverage, performance, gini, modularity_score_murata
             )
 
             temp_results.append(result)
@@ -298,7 +313,8 @@ class ComDetMultiCriteria(CommunityDetector):
         # Remove duplicates
         results_set = set(temp_results)
         # Building result dicts
-        cols = ['name', 'num_clusters', 'modularity_score', 'modularity_score_1', 'modularity_score_2', 'adj_rand_index']
+        cols = ['name', 'num_clusters', 'modularity_score', 'modularity_score_1', 'modularity_score_2', 'adj_rand_index', 'modularity_score_barber',
+                'conductance', 'coverage', 'performance', 'gini', 'modularity_score_murata']
         self.results_ = [{k:v for k,v in zip(cols, value)} for value in results_set]
 
     def compute_hypervolume(self):
@@ -349,15 +365,71 @@ class ComDetMultiCriteria(CommunityDetector):
     #     # Returns the community detection results (dict free format)
     #     return self.results_
 
+def bi_performance(badj, communities):
+    """
+    Calculate the performance of a community assignment, i.e. the fraction of nodes pairs with edges and the same community or without edges and different communities.
+    """
 
+    poss_edges = badj.shape[0]*badj.shape[1]
+    perf_pairs = 0
+    edges = set(zip(badj.tocoo().row,badj.tocoo().col))
+    for i in range(badj.shape[0]):
+        for j in range(badj.shape[1]):
+            if ((i,j) in edges and communities[i] == communities[badj.shape[0]+j]) or ((i,j) not in edges and communities[i] != communities[badj.shape[0]+j]):
+                perf_pairs += 1
+    return perf_pairs/poss_edges
 
+def modularity_murata(badj,communities):
+    """
+    Calculate Murata modularity of a given community assignment.
+    """
+    
+    ## Make the e array, fraction of edges between the two communities in each mode.
+    e = np.zeros((max(communities)+1,max(communities)+1))
+    ## Iterate over the edges.
+    for s,t in zip(badj.tocoo().row,badj.tocoo().col):
+        ## Increment e_lm where s in comm l and t in comm m.
+        e[communities[s]][communities[t+badj.shape[0]]] += 1
+    e /= 2*np.sum(e)
+
+    ## Make the a array, the row sums of the e array.
+    a = np.sum(e,axis=1)
+    
+    ## Now we calculate Q, the sum of max observed difference.
+    q = 0
+    for i in range(e.shape[0]):
+        j = np.argmax(e[i])
+        q += (e[i][j] - a[i]*a[j])
+    return q
+
+def make_badj(graph):
+    """
+    Turn an igraph object into a biadjency matrix from the edgelist.
+    """
+    vertex_map = {}  ## Map true id to bipartite id.
+    vertex_type = {}
+    lid,uid = 0,0
+    for v in graph.vs():
+        if v['name'] == 1:
+            bid = uid
+            uid += 1
+        else:
+            bid = lid
+            lid += 1
+        vertex_map[v.index] = bid
+        vertex_type[v.index] = v['name']
+    edge_list = [(e.source,e.target) for e in graph.es]  ## Extract the edges.
+    edge_list = [(s,t) if vertex_type[t] else (t,s) for s,t in edge_list]  ## Order them so the bottom node is first.
+    edge_list = [(vertex_map[s],vertex_map[t]) for s,t in edge_list]  ## Map them to bipartite ids.
+    badj = sknetwork.utils.edgelist2biadjacency(edge_list)  ## Make the adjacency matrix.
+    return badj
 
 ########################### Some tests
 
 def test_problem(mode="3d"):
     # Sample graph (using fig 06 parameters)
     from data_generation import ExpConfig, DataGenerator
-    fig06_expconfig = ExpConfig(L=30, U=30, NumEdges=100, ML=0.5, MU=0.5, BC=0.1, NumGraphs=30,shuffle=False,seed=None,)
+    fig06_expconfig = ExpConfig(L=[15,15], U=[15,15], NumEdges=100, BC=0.1, NumGraphs=30,shuffle=False,seed=None,)
     datagen = DataGenerator(expconfig=fig06_expconfig) # or one can just call DataGenerator() --> Default config for data generation
     print(datagen)
     it = datagen.generate_data()
@@ -372,7 +444,7 @@ def test_community_detection(mode="3d"):
     import pandas as pd
     from data_generation import ExpConfig, DataGenerator
     import pickle
-    fig06_expconfig = ExpConfig(L=30, U=30, NumEdges=100, ML=0.5, MU=0.5, BC=0.1, NumGraphs=30,shuffle=False,seed=None,)
+    fig06_expconfig = ExpConfig(L=[15,15], U=[15,15], NumEdges=100, BC=0.1, NumGraphs=30,shuffle=False,seed=None,)
     datagen = DataGenerator(expconfig=fig06_expconfig) # or one can just call DataGenerator() --> Default config for data generation
     print(datagen)
     it = datagen.generate_data()

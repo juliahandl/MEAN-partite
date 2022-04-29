@@ -1,16 +1,11 @@
 ## This script is a minimum working example of the data process.
 
-use_sbm = True
-
 import igraph
 import pandas as pd
-if use_sbm:
-    from moo.data_generation_sbm import ExpConfig, DataGenerator
-else:
-    from moo.data_generation import ExpConfig, DataGenerator
-from moo.contestant_bimod import get_best_community_solutions, draw_best_community_solutions
-import moo.contestant_bimod as contestant
-from moo.multicriteria_bimod import ComDetMultiCriteria
+from moo.data_generation import ExpConfig, DataGenerator
+from moo.contestant import get_best_community_solutions, draw_best_community_solutions
+import moo.contestant as contestant
+from moo.multicriteria import ComDetMultiCriteria
 import matplotlib.pyplot as plt
 import sknetwork
 import code
@@ -19,16 +14,11 @@ import time
 start = time.time()
 
 ## Run the data loading.
-if use_sbm:
-    expconfig = ExpConfig(
+expconfig = ExpConfig(
     L=[15,15], U=[15,15], NumEdges=200, BC=0.1, NumGraphs=5,
     shuffle=True, filename='', seed=24#42
-    )
-else:
-    expconfig = ExpConfig(
-    L=30, U=30, NumEdges=200, ML=0.5, MU=0.5, BC=0.1, NumGraphs=30,
-    shuffle=False, seed=24#42
-    )
+)
+
 print(expconfig) # Print parameters, or access individually, e.g., expconfig.NumEdges
 
 print('Config defined in %f s' % (time.time()-start))

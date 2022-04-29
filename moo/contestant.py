@@ -6,6 +6,9 @@ from sklearn.metrics.cluster import adjusted_rand_score
 import condor
 from moo.utils import nostdout
 #from condor import condor
+import sknetwork
+import cdlib
+import skbio
 
 class CommunityDetector():
     """
@@ -45,7 +48,7 @@ class CommunityDetector():
 
 
 class ComDetFastGreedy(CommunityDetector):
-    def __init__(self, name= "fastgreedy", params = {'weights': None}, min_num_clusters=1, max_num_clusters=15) -> None:
+    def __init__(self, name= "fastgreedy", params = {'weights': None}, min_num_clusters=1, max_num_clusters=30) -> None:
         #TODO: A range of cluster with a possibility to generate automatically (str argument)
         super().__init__(name)
         self.params_ = params
@@ -85,24 +88,43 @@ class ComDetFastGreedy(CommunityDetector):
         # num_clusters = min(self.num_clusters_+ 1, len(self.graph_.vs))
         min_num_clusters = self.min_num_clusters_
         max_num_clusters = min(self.max_num_clusters_, len(self.graph_.vs)) + 1
-        
+        badj = make_badj(self.graph_)
         for k in range(min_num_clusters, max_num_clusters):
             vx_clustering = res_dendo.as_clustering(k)
             proj0_labels=[vx_clustering.membership[i] for i in proj0]
             proj1_labels=[vx_clustering.membership[i] for i in proj1]
             modularity_score = self.graph_.modularity(vx_clustering)
+            modularity_score_barber = sknetwork.clustering.bimodularity(badj,proj0_labels,proj1_labels)
+            modularity_score_murata = modularity_murata(badj,proj0_labels+proj1_labels)
             # modularity_score_1 = graph_proj1.modularity(vx_clustering.membership[0:lower], weights=graph_proj1.es['weight'])
             # modularity_score_2 = graph_proj2.modularity(vx_clustering.membership[lower:n_vertices], weights=graph_proj2.es['weight'])
             modularity_score_1 = graph_proj1.modularity(proj0_labels, weights=graph_proj1.es['weight'])
             modularity_score_2 = graph_proj2.modularity(proj1_labels, weights=graph_proj2.es['weight'])
             adj_rand_index = adjusted_rand_score(ground_truth, vx_clustering.membership)
+            
+            ## Add in the other metrics. First need to create a cdlib clustering.
+            communities = [[] for i in range(max(vx_clustering.membership)+1)] ## List of list of node ids.
+            for i,lab in enumerate(vx_clustering.membership):
+                communities[lab].append(i)
+            clust = cdlib.NodeClustering(communities, graph=None, method_name=self.name_)
+            conductance = cdlib.evaluation.conductance(self.graph_,clust).score
+            coverage = cdlib.evaluation.edges_inside(self.graph_,clust).score
+            performance = bi_performance(badj, proj0_labels + proj1_labels)
+            gini = skbio.diversity.alpha.gini_index([len(c) for c in communities])
+            
             result = dict(
                 name=self.name_,
                 num_clusters = k,
                 modularity_score = modularity_score,
+                modularity_score_barber = modularity_score_barber,
+                modularity_score_murata = modularity_score_murata,
                 modularity_score_1 = modularity_score_1,
                 modularity_score_2 = modularity_score_2,
                 adj_rand_index = adj_rand_index,
+                conductance = conductance,
+                coverage = coverage,
+                performance = performance,
+                gini = gini
             )
             self.results_.append(result)
         
@@ -113,7 +135,7 @@ class ComDetFastGreedy(CommunityDetector):
 
 
 class ComDetEdgeBetweenness(CommunityDetector):
-    def __init__(self, name= "edgebetweenness", params = {'directed': False, 'weights': None}, min_num_clusters=1, max_num_clusters=15) -> None:
+    def __init__(self, name= "edgebetweenness", params = {'directed': False, 'weights': None}, min_num_clusters=1, max_num_clusters=30) -> None:
         #TODO: A range of cluster with a possibility to generate automatically (str argument)
         super().__init__(name)
         self.params_ = params
@@ -153,24 +175,42 @@ class ComDetEdgeBetweenness(CommunityDetector):
         # num_clusters = min(self.num_clusters_+ 1, len(self.graph_.vs))
         min_num_clusters = self.min_num_clusters_
         max_num_clusters = min(self.max_num_clusters_, len(self.graph_.vs)) + 1
-        
+        badj = make_badj(self.graph_)
         for k in range(min_num_clusters, max_num_clusters):
             vx_clustering = res_dendo.as_clustering(k)
             proj0_labels=[vx_clustering.membership[i] for i in proj0]
             proj1_labels=[vx_clustering.membership[i] for i in proj1]
             modularity_score = self.graph_.modularity(vx_clustering)
+            modularity_score_barber = sknetwork.clustering.bimodularity(badj,proj0_labels,proj1_labels)
+            modularity_score_murata = modularity_murata(badj,proj0_labels+proj1_labels)
             # modularity_score_1 = graph_proj1.modularity(vx_clustering.membership[0:lower], weights=graph_proj1.es['weight'])
             # modularity_score_2 = graph_proj2.modularity(vx_clustering.membership[lower:n_vertices], weights=graph_proj2.es['weight'])
             modularity_score_1 = graph_proj1.modularity(proj0_labels, weights=graph_proj1.es['weight'])
             modularity_score_2 = graph_proj2.modularity(proj1_labels, weights=graph_proj2.es['weight'])
             adj_rand_index = adjusted_rand_score(ground_truth, vx_clustering.membership)
+            
+            communities = [[] for i in range(max(vx_clustering.membership)+1)] ## List of list of node ids.
+            for i,lab in enumerate(vx_clustering.membership):
+                communities[lab].append(i)
+            clust = cdlib.NodeClustering(communities, graph=None, method_name=self.name_)
+            conductance = cdlib.evaluation.conductance(self.graph_,clust).score
+            coverage = cdlib.evaluation.edges_inside(self.graph_,clust).score
+            performance = bi_performance(badj, proj0_labels+proj1_labels)
+            gini = skbio.diversity.alpha.gini_index([len(c) for c in communities])
+            
             result = dict(
                 name=self.name_,
                 num_clusters = k,
                 modularity_score = modularity_score,
+                modularity_score_barber = modularity_score_barber,
+                modularity_score_murata = modularity_score_murata,
                 modularity_score_1 = modularity_score_1,
                 modularity_score_2 = modularity_score_2,
                 adj_rand_index = adj_rand_index,
+                conductance = conductance,
+                coverage = coverage,
+                performance = performance,
+                gini = gini
             )
             self.results_.append(result)
         
@@ -181,7 +221,7 @@ class ComDetEdgeBetweenness(CommunityDetector):
 
 
 class ComDetWalkTrap(CommunityDetector):
-    def __init__(self, name= "walktrap", params = {'weights': None, 'steps': 4}, min_num_clusters=1, max_num_clusters=15) -> None:
+    def __init__(self, name= "walktrap", params = {'weights': None, 'steps': 4}, min_num_clusters=1, max_num_clusters=30) -> None:
         #TODO: A range of cluster with a possibility to generate automatically (str argument)
         super().__init__(name)
         self.params_ = params
@@ -222,24 +262,42 @@ class ComDetWalkTrap(CommunityDetector):
         # num_clusters = min(self.num_clusters_+ 1, len(self.graph_.vs))
         min_num_clusters = self.min_num_clusters_
         max_num_clusters = min(self.max_num_clusters_, len(self.graph_.vs)) + 1
-        
+        badj = make_badj(self.graph_)
         for k in range(min_num_clusters, max_num_clusters):
             vx_clustering = res_dendo.as_clustering(k)
             proj0_labels=[vx_clustering.membership[i] for i in proj0]
             proj1_labels=[vx_clustering.membership[i] for i in proj1]
             modularity_score = self.graph_.modularity(vx_clustering)
+            modularity_score_barber = sknetwork.clustering.bimodularity(badj,proj0_labels,proj1_labels)
+            modularity_score_murata = modularity_murata(badj,proj0_labels+proj1_labels)
             # modularity_score_1 = graph_proj1.modularity(vx_clustering.membership[0:lower], weights=graph_proj1.es['weight'])
             # modularity_score_2 = graph_proj2.modularity(vx_clustering.membership[lower:n_vertices], weights=graph_proj2.es['weight'])
             modularity_score_1 = graph_proj1.modularity(proj0_labels, weights=graph_proj1.es['weight'])
             modularity_score_2 = graph_proj2.modularity(proj1_labels, weights=graph_proj2.es['weight'])
             adj_rand_index = adjusted_rand_score(ground_truth, vx_clustering.membership)
+            
+            communities = [[] for i in range(max(vx_clustering.membership)+1)] ## List of list of node ids.
+            for i,lab in enumerate(vx_clustering.membership):
+                communities[lab].append(i)
+            clust = cdlib.NodeClustering(communities, graph=None, method_name=self.name_)
+            conductance = cdlib.evaluation.conductance(self.graph_,clust).score
+            coverage = cdlib.evaluation.edges_inside(self.graph_,clust).score
+            performance = bi_performance(badj, proj0_labels+proj1_labels)
+            gini = skbio.diversity.alpha.gini_index([len(c) for c in communities])
+            
             result = dict(
                 name=self.name_,
                 num_clusters = k,
                 modularity_score = modularity_score,
+                modularity_score_barber = modularity_score_barber,
+                modularity_score_murata = modularity_score_murata,
                 modularity_score_1 = modularity_score_1,
                 modularity_score_2 = modularity_score_2,
                 adj_rand_index = adj_rand_index,
+                conductance = conductance,
+                coverage = coverage,
+                performance = performance,
+                gini = gini
             )
             self.results_.append(result)
         
@@ -250,7 +308,7 @@ class ComDetWalkTrap(CommunityDetector):
 
 
 class ComDetMultiLevel(CommunityDetector):
-    def __init__(self, name= "multilevel", params = {'weights': None, 'return_levels': False}, min_num_clusters=1, max_num_clusters=15) -> None:
+    def __init__(self, name= "multilevel", params = {'weights': None, 'return_levels': False}, min_num_clusters=1, max_num_clusters=30) -> None:
         #TODO: A range of cluster with a possibility to generate automatically (str argument)
         super().__init__(name)
         self.params_ = params
@@ -353,20 +411,39 @@ class ComDetMultiLevel(CommunityDetector):
 
             proj0_labels=[newlabels[i] for i in proj0]
             proj1_labels=[newlabels[i] for i in proj1]
-            
+            badj = make_badj(self.graph_)
             modularity_score = self.graph_.modularity(newlabels)
+            
+            modularity_score_barber = sknetwork.clustering.bimodularity(badj,list(map(int,proj0_labels)),list(map(int,proj1_labels)))
+            modularity_score_murata = modularity_murata(badj,list(map(int,proj0_labels+proj1_labels)))
             # modularity_score_1 = graph_proj1.modularity(newlabels[0:lower], weights=graph_proj1.es['weight'])
             # modularity_score_2 = graph_proj2.modularity(newlabels[lower:n_vertices], weights=graph_proj2.es['weight'])
             modularity_score_1 = graph_proj1.modularity(proj0_labels, weights=graph_proj1.es['weight'])
             modularity_score_2 = graph_proj2.modularity(proj1_labels, weights=graph_proj2.es['weight'])
             adj_rand_index = adjusted_rand_score(ground_truth, newlabels)
+            
+            communities = [[] for i in range(int(max(newlabels))+1)] ## List of list of node ids.
+            for i,lab in enumerate(newlabels):
+                communities[int(lab)].append(i)
+            clust = cdlib.NodeClustering(communities, graph=None, method_name=self.name_)
+            conductance = cdlib.evaluation.conductance(self.graph_,clust).score
+            coverage = cdlib.evaluation.edges_inside(self.graph_,clust).score
+            performance = bi_performance(badj, proj0_labels+proj1_labels)
+            gini = skbio.diversity.alpha.gini_index([len(c) for c in communities])
+            
             result = dict(
                     name=self.name_,
                     num_clusters = k,
                     modularity_score = modularity_score,
+                    modularity_score_barber = modularity_score_barber,
+                    modularity_score_murata = modularity_score_murata,
                     modularity_score_1 = modularity_score_1,
                     modularity_score_2 = modularity_score_2,
                     adj_rand_index = adj_rand_index,
+                    conductance = conductance,
+                    coverage = coverage,
+                    performance = performance,
+                    gini = gini
                 )
             self.results_.append(result)
         
@@ -377,7 +454,7 @@ class ComDetMultiLevel(CommunityDetector):
 
 
 class ComDetBRIMNoPert(CommunityDetector):
-    def __init__(self, name= "brim", params = {'method': 'LCS', 'project': False}, min_num_clusters=1, max_num_clusters=15) -> None:
+    def __init__(self, name= "brim", params = {'method': 'LCS', 'project': False}, min_num_clusters=1, max_num_clusters=30) -> None:
         #TODO: A range of cluster with a possibility to generate automatically (str argument)
         super().__init__(name)
         self.params_ = params
@@ -415,9 +492,16 @@ class ComDetBRIMNoPert(CommunityDetector):
 
         net = pd.DataFrame(edges, dtype=str)
 
-        co = condor.condor_object(dataframe=net, verbose=False)
-        co.initial_community(**self.params_)
-        co.brim()
+        with nostdout():
+            co = condor.condor_object(net)
+            co = condor.initial_community(co, **self.params_)
+            #co['reg_memb']['community'] = (co['reg_memb']['community'] % 2)
+            
+        if max(co['reg_memb'].iloc[:,1])+1 > self.max_num_clusters_:
+            print('BRIM found too many communities in the initial assignment. Try increasing max_num_clusters above %d.' % self.max_num_clusters_)
+            exit()
+        with nostdout():
+            co = condor.brim(co,c=self.max_num_clusters_)#,c=max(co['reg_memb'].iloc[:,1])+1)
 
         groundtruth1 = ground_truth[0:lower]
         groundtruth2 = ground_truth[lower:n_vertices]
@@ -427,10 +511,10 @@ class ComDetBRIMNoPert(CommunityDetector):
         # output2 = co["tar_memb"]
         # output2 = output2["com"].tolist()
 
-        output1=co.reg_memb
+        output1=co['reg_memb']
         # print(output1.shape)
         output1=output1["com"].tolist()
-        output2 = co.tar_memb
+        output2 = co['tar_memb']
         # print(output2.shape)
         output2=output2["com"].tolist()
         
@@ -438,21 +522,39 @@ class ComDetBRIMNoPert(CommunityDetector):
         # adj_rand_index_2 = adjusted_rand_score(groundtruth2, output1)
         output3 = output2 + output1
         adj_rand_index = adjusted_rand_score(ground_truth, output3)
-        
+        badj = make_badj(self.graph_)
         modularity_score = self.graph_.modularity(output3)
+        modularity_score_barber = sknetwork.clustering.bimodularity(badj,output1,output2)
+        modularity_score_murata = modularity_murata(badj,proj0_labels+proj1_labels)
         # print(len(output2), len(graph_proj1.vs), len(graph_proj1.es['weight']))
         # print(len(output1), len(graph_proj2.vs), len(graph_proj2.es['weight']))
         modularity_score_1 = graph_proj1.modularity(output1, weights = graph_proj1.es['weight'])
         modularity_score_2 = graph_proj2.modularity(output2, weights = graph_proj2.es['weight'])
 
         k = (max(output3) + 1)
+
+        communities = [[] for i in range(max(output3)+1)] ## List of list of node ids.
+        for i,lab in enumerate(output3):
+            communities[lab].append(i)
+        clust = cdlib.NodeClustering(communities, graph=None, method_name=self.name_)
+        conductance = cdlib.evaluation.conductance(self.graph_,clust).score
+        coverage = cdlib.evaluation.edges_inside(self.graph_,clust).score
+        performance = bi_performance(badj, output3)
+        gini = skbio.diversity.alpha.gini_index([len(c) for c in communities])
+            
         result = dict(
                 name=self.name_,
                 num_clusters = k,
                 modularity_score = modularity_score,
+                modularity_score_barber = modularity_score_barber,
+                modularity_score_murata = modularity_score_murata,
                 modularity_score_1 = modularity_score_1,
                 modularity_score_2 = modularity_score_2,
                 adj_rand_index = adj_rand_index,
+                conductance = conductance,
+                coverage = coverage,
+                performance = performance,
+                gini = gini
             )
         self.results_.append(result)
 
@@ -463,7 +565,7 @@ class ComDetBRIMNoPert(CommunityDetector):
 
 
 class ComDetBRIM(CommunityDetector):
-    def __init__(self, name= "brim", params = {'method': 'LCS', 'project': False}, min_num_clusters=1, max_num_clusters=15) -> None:
+    def __init__(self, name= "brim", params = {'method': 'LCS', 'project': False}, min_num_clusters=1, max_num_clusters=30) -> None:
         #TODO: A range of cluster with a possibility to generate automatically (str argument)
         super().__init__(name)
         self.params_ = params
@@ -531,6 +633,7 @@ class ComDetBRIM(CommunityDetector):
             else:
                 print("Error")
 
+        #code.interact(local=locals())
         net = pd.DataFrame(edges, dtype=str)
 
         # Set weight to 1 for all links
@@ -538,11 +641,17 @@ class ComDetBRIM(CommunityDetector):
         net["weight"]=1
 
         # Run the algorithm, suppressing its very verbose output
+        #code.interact(local=locals())
         with nostdout():
             co = condor.condor_object(net)
             co = condor.initial_community(co, **self.params_)
-        
-            co = condor.brim(co)
+            #co['reg_memb']['community'] = (co['reg_memb']['community'] % 2)
+            
+        if max(co['reg_memb'].iloc[:,1])+1 > self.max_num_clusters_:
+            print('BRIM found too many communities in the initial assignment. Try increasing max_num_clusters above %d.' % self.max_num_clusters_)
+            exit()
+        with nostdout():
+            co = condor.brim(co,c=self.max_num_clusters_)#,c=max(co['reg_memb'].iloc[:,1])+1)
 
         # groundtruth1 = ground_truth[0:lower]
         # groundtruth2 = ground_truth[lower:n_vertices]
@@ -596,19 +705,38 @@ class ComDetBRIM(CommunityDetector):
         #         index2 += 1
 
         adj_rand_index = adjusted_rand_score(ground_truth, combined_memb["com"].tolist())
-        
+        badj = make_badj(self.graph_)
         modularity_score = self.graph_.modularity(combined_memb["com"].tolist())
+        modularity_score_barber = sknetwork.clustering.bimodularity(badj,tar_memb["com"].tolist(),reg_memb["com"].tolist())
+        modularity_score_murata = modularity_murata(badj,combined_memb["com"].tolist())
         modularity_score_1 = graph_proj1.modularity(tar_memb["com"].tolist(), weights = graph_proj1.es['weight'])
         modularity_score_2 = graph_proj2.modularity(reg_memb["com"].tolist(), weights = graph_proj2.es['weight'])
 
         k = (max(combined_memb["com"].tolist()) + 1)
+        communities = [[] for i in range(max(combined_memb["com"].tolist())+1)] ## List of list of node ids.
+        for i,lab in enumerate(combined_memb["com"].tolist()):
+            communities[lab].append(i)
+        communities = [c for c in communities if c]  ## Drop any empty communities from missing numbers that confuse cdlib
+        clust = cdlib.NodeClustering(communities, graph=None, method_name=self.name_)
+
+        conductance = cdlib.evaluation.conductance(self.graph_,clust).score
+        coverage = cdlib.evaluation.edges_inside(self.graph_,clust).score
+        performance = bi_performance(badj, tar_memb["com"].tolist()+reg_memb["com"].tolist())
+        gini = skbio.diversity.alpha.gini_index([len(c) for c in communities])
+
         result = dict(
                 name=self.name_,
                 num_clusters = k,
                 modularity_score = modularity_score,
+                modularity_score_barber = modularity_score_barber,
+                modularity_score_murata = modularity_score_murata,
                 modularity_score_1 = modularity_score_1,
                 modularity_score_2 = modularity_score_2,
                 adj_rand_index = adj_rand_index,
+                conductance = conductance,
+                coverage = coverage,
+                performance = performance,
+                gini = gini
             )
         self.results_.append(result)
 
@@ -619,6 +747,99 @@ class ComDetBRIM(CommunityDetector):
 
 #TODO ComDetBRIM (perturbation version) based on ComDetBRIMNoPert
 #TODO Compare condor results for the current version and the old version 1.1 that Julia used
+
+class ComDetBiLouvain(CommunityDetector):
+    def __init__(self, name= "bilouvain", params = {'weights': None}, min_num_clusters=1, max_num_clusters=30) -> None:
+        #TODO: A range of cluster with a possibility to generate automatically (str argument)
+        super().__init__(name)
+        self.params_ = params
+        
+        assert min_num_clusters >= 1 and min_num_clusters <= max_num_clusters,\
+        f"The minimum {min_num_clusters} and maximum {max_num_clusters} cluster numbers are not valid"
+        self.min_num_clusters_ = min_num_clusters
+        self.max_num_clusters_ = max_num_clusters
+
+    def check_graph(self, graph):
+        super().check_graph(graph)
+        # Additional checks go here
+
+    def detect_communities(self, graph, y=None):
+        #TODO: fit instead of this and y as groundtruth or None to infer from the graph
+        # Some checks
+        self.check_graph(graph)
+        self.graph_ = graph
+        self.results_ = [] # Reset results at each call
+        # Community detection done here (results stored in self.results_)
+        self.__detect_communitites()
+        return self # Needs to return self
+       
+    def __detect_communitites(self):
+        # Actual community detection code
+        vertices = list(map(int, self.graph_.vs['type']))
+        # edges = self.graph_.get_edgelist()
+        lower = vertices.count(0)
+        upper = vertices.count(1)
+        n_vertices = len(self.graph_.vs)
+        ground_truth = self.graph_.vs['GT']
+        ## To work with the bilabels, we need to make gt0 and gt1 list proj0.
+        gt0 = [v['GT'] for v in self.graph_.vs if v['type'] == 0]
+        gt1 = [v['GT'] for v in self.graph_.vs if v['type'] == 1]
+        proj0 = [i for i, val in enumerate(vertices) if val == 0]
+        proj1 = [i for i, val in enumerate(vertices) if val == 1]
+        graph_proj1, graph_proj2 = self.graph_.bipartite_projection(multiplicity=True)
+        
+        badj = make_badj(self.graph_)
+        ## Set up the biLouvain method. sknetwork rolls them both into one.
+        bilouvain = sknetwork.clustering.Louvain()
+        
+        ## Now we fit bilouvain to the graph.
+        bilouvain.fit(badj,force_bipartite=True)
+        #code.interact(local=locals())
+        proj0_labels=list(bilouvain.labels_row_)
+        proj1_labels=list(bilouvain.labels_col_)
+        graph_labels = [0]*len(ground_truth)
+        for i,lab in zip(proj0,proj0_labels):
+            graph_labels[i] = lab
+        for i,lab in zip(proj1,proj1_labels):
+            graph_labels[i] = lab
+        modularity_score = self.graph_.modularity(graph_labels)
+        modularity_score_barber = sknetwork.clustering.bimodularity(badj,proj0_labels,proj1_labels)
+        
+        modularity_score_murata = modularity_murata(badj,proj0_labels+proj1_labels)
+        modularity_score_1 = graph_proj1.modularity(proj0_labels, weights=graph_proj1.es['weight'])
+        modularity_score_2 = graph_proj2.modularity(proj1_labels, weights=graph_proj2.es['weight'])
+        adj_rand_index = adjusted_rand_score(gt0+gt1,proj0_labels+proj1_labels)
+        
+        communities = [[] for i in range(max(proj0_labels+proj1_labels)+1)] ## List of list of node ids.
+        for i,lab in enumerate(graph_labels):
+            communities[lab].append(i)
+        clust = cdlib.NodeClustering(communities, graph=None, method_name=self.name_)
+        conductance = cdlib.evaluation.conductance(self.graph_,clust).score
+        coverage = cdlib.evaluation.edges_inside(self.graph_,clust).score
+        performance = bi_performance(badj, proj0_labels+proj1_labels)
+        gini = skbio.diversity.alpha.gini_index([len(c) for c in communities])
+        
+        result = dict(
+            name=self.name_,
+            num_clusters = (max(proj0_labels+proj1_labels)+1),
+            modularity_score = modularity_score,
+            modularity_score_barber = modularity_score_barber,
+            modularity_score_murata = modularity_score_murata,
+            modularity_score_1 = modularity_score_1,
+            modularity_score_2 = modularity_score_2,
+            adj_rand_index = adj_rand_index,
+            conductance = conductance,
+            coverage = coverage,
+            performance = performance,
+            gini = gini
+            )
+        self.results_.append(result)
+        
+    # Optional overriding
+    # def get_results(self):
+    #     # Returns the community detection results (dict free format)
+    #     return self.results_
+
 
 ########################################################
 #### Utility
@@ -665,6 +886,64 @@ def draw_best_community_solutions(df_best_community_solutions, ax=None):
     # )
     # # None, order=None, hue_order=None, orient=None, color=None, palette=None, saturation=0.75, width=0.8, dodge=True, fliersize=5, linewidth=None, whis=1.5, ax=None, **kwargs)
 
+def bi_performance(badj, communities):
+    """
+    Calculate the performance of a community assignment, i.e. the fraction of nodes pairs with edges and the same community or without edges and different communities.
+    """
+
+    poss_edges = badj.shape[0]*badj.shape[1]
+    perf_pairs = 0
+    edges = set(zip(badj.tocoo().row,badj.tocoo().col))
+    for i in range(badj.shape[0]):
+        for j in range(badj.shape[1]):
+            if ((i,j) in edges and communities[i] == communities[badj.shape[0]+j]) or ((i,j) not in edges and communities[i] != communities[badj.shape[0]+j]):
+                perf_pairs += 1
+    return perf_pairs/poss_edges
+
+def modularity_murata(badj,communities):
+    """
+    Calculate Murata modularity of a given community assignment.
+    """
+    
+    ## Make the e array, fraction of edges between the two communities in each mode.
+    e = np.zeros((max(communities)+1,max(communities)+1))
+    ## Iterate over the edges.
+    for s,t in zip(badj.tocoo().row,badj.tocoo().col):
+        ## Increment e_lm where s in comm l and t in comm m.
+        e[communities[s]][communities[t+badj.shape[0]]] += 1
+    e /= 2*np.sum(e)
+
+    ## Make the a array, the row sums of the e array.
+    a = np.sum(e,axis=1)
+    
+    ## Now we calculate Q, the sum of max observed difference.
+    q = 0
+    for i in range(e.shape[0]):
+        j = np.argmax(e[i])
+        q += (e[i][j] - a[i]*a[j])
+    return q
+
+def make_badj(graph):
+    """
+    Turn an igraph object into a biadjency matrix from the edgelist.
+    """
+    vertex_map = {}  ## Map true id to bipartite id.
+    vertex_type = {}
+    lid,uid = 0,0
+    for v in graph.vs():
+        if v['name'] == 1:
+            bid = uid
+            uid += 1
+        else:
+            bid = lid
+            lid += 1
+        vertex_map[v.index] = bid
+        vertex_type[v.index] = v['name']
+    edge_list = [(e.source,e.target) for e in graph.es]  ## Extract the edges.
+    edge_list = [(s,t) if vertex_type[t] else (t,s) for s,t in edge_list]  ## Order them so the bottom node is first.
+    edge_list = [(vertex_map[s],vertex_map[t]) for s,t in edge_list]  ## Map them to bipartite ids.
+    badj = sknetwork.utils.edgelist2biadjacency(edge_list)  ## Make the adjacency matrix.
+    return badj
 
 def test_community_detector():
     # Data generation
@@ -691,7 +970,6 @@ def test_community_detector():
     import pandas as pd
     df = pd.DataFrame(result)
     print(df)
-
 
 if __name__ == "__main__":
     

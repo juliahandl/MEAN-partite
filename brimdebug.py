@@ -17,8 +17,8 @@ import pandas as pd
 
 
 expconfig = ExpConfig(
-    L=30, U=30,
-    NumEdges=200, ML=0.5, MU=0.5,
+    L=[15,15], U=[15,15],
+    NumEdges=200,
     BC=0.1, NumGraphs=30,
     shuffle=True,
     seed=1234  

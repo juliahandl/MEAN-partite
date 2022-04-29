@@ -1,4 +1,4 @@
-from moo.data_generation_sbm import ExpConfig, DataGenerator
+from moo.data_generation import ExpConfig, DataGenerator
 
 from joblib import Parallel, delayed
 import itertools

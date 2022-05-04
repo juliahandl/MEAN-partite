@@ -648,8 +648,7 @@ class ComDetBRIM(CommunityDetector):
             #co['reg_memb']['community'] = (co['reg_memb']['community'] % 2)
             
         if max(co['reg_memb'].iloc[:,1])+1 > self.max_num_clusters_:
-            print('BRIM found too many communities in the initial assignment. Try increasing max_num_clusters above %d.' % self.max_num_clusters_)
-            exit()
+            raise ValueError('BRIM found too many communities in the initial assignment. Try increasing max_num_clusters above %d.' % self.max_num_clusters_)
         with nostdout():
             co = condor.brim(co,c=self.max_num_clusters_)#,c=max(co['reg_memb'].iloc[:,1])+1)
 

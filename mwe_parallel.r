@@ -2,6 +2,7 @@ library(reticulate)
 library(igraph)
 library(tidyverse)
 
+
 use_virtualenv("./venv")
 
 moo <- import("moo")

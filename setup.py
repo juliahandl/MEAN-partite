@@ -17,7 +17,7 @@ setup(name='moo',
     'seaborn',
     'tqdm',
     'psutil',
-    'scikit-network',
+    'scikit-network==0.25.0',
     'cdlib',
     'scikit-bio'
     ],

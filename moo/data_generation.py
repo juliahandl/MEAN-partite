@@ -130,7 +130,7 @@ class DataGenerator():
                         g.write_gml(filename+'_%d.gml' % it)
                     except FileNotFoundError:
                         print('ERROR: You need to create the specified directory.')
-                        exit()
+                        raise FileNotFoundError
                 yield g_i_new #, vT, groundtruth,
             else:
                 #T = [groundtruth[i] for i in g_i.clusters()[index_max]]

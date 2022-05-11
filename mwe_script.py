@@ -15,8 +15,8 @@ start = time.time()
 
 ## Run the data loading.
 expconfig = ExpConfig(
-    L=[15,15], U=[15,15], NumEdges=200, BC=0.1, NumGraphs=5,
-    shuffle=True, filename='', seed=24#42
+    L=[15,15], U=[15,15], NumEdges=200, BC=0.1, NumGraphs=1,
+    shuffle=True, filename='test_graphs_', seed=24#42
 )
 
 print(expconfig) # Print parameters, or access individually, e.g., expconfig.NumEdges

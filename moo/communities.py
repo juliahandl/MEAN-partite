@@ -5,6 +5,7 @@ import itertools
 
 import pandas as pd
 from tqdm import tqdm
+import igraph
 
 
 # A utility function to generate data for each configuration, and run the community detection algorithms
@@ -119,3 +120,24 @@ def run_serial_communities(graphgenerator, algos):
     joblibresults = flatten(joblibresultsStacked)
 
     return joblibresults
+
+def run_communities_from_file(fname, algo):
+    '''
+    Load the specified graph from file and detect communities using the given algorithm.
+
+    fname A string giving the path and filename for the graph in question.
+
+    Returns a list containing the results of each step of the algorithm.  You will likely want 
+    to select the best solution for each graph / algorithm combination
+
+    '''
+
+    ## Read in the graph from file.
+    graph = igraph.Graph.Read_GML(fname)
+
+    results = algo.detect_communities(graph).get_results()
+
+    for r in results:
+        r['graph'] = fname
+
+    return results

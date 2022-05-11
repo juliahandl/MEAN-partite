@@ -138,6 +138,6 @@ def run_communities_from_file(fname, algo):
     results = algo.detect_communities(graph).get_results()
 
     for r in results:
-        r['graph'] = fname
+        r['graph_idx'] = fname
 
     return results

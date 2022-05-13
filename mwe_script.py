@@ -36,30 +36,34 @@ start = time.time()
 algos = [
     contestant.ComDetMultiLevel(), # Multi-Level approach
     #contestant.ComDetEdgeBetweenness(), # EdgeBetweenness approach
-    contestant.ComDetWalkTrap(), # WalkTrap approach
-    contestant.ComDetFastGreedy(), # FastGreedy approach
+    #contestant.ComDetWalkTrap(), # WalkTrap approach
+    #contestant.ComDetFastGreedy(), # FastGreedy approach
     #contestant.ComDetBRIM(), # BRIM approach
-    contestant.ComDetBiLouvain(), # sknetwork bilovain
-    #ComDetMultiCriteria(  # 3D MO approach
-    #name='3d',
-    #params = {
-    #    'mode': '3d', # '2d' for 2d approach
-    #    'popsize': 50,
-    #    'termination': None, # By default it runs for 1000 generations (or pass a pymoo termination instance)
-    #    'save_history': False, # set to True for later hypervolume calculations
-    #    'seed': None, # For reproducibility
-    #}
-#),
-    #ComDetMultiCriteria(  # 2D MO approach
-    #name='2d',
-    #params = {
-    #    'mode': '2d', # '2d' for 2d approach
-    #    'popsize': 50,
-    #    'termination': None, # By default it runs for 1000 generations (or pass a pymoo termination instance)
-    #    'save_history': False, # set to True for later hypervolume calculations
-    #    'seed': None, # For reproducibility
-    #}
-#)
+    #contestant.ComDetBiLouvain(), # sknetwork bilovain
+    ComDetMultiCriteria(  # 3D MO approach
+    name='3d',
+    params = {
+        'mode': '3d', # '2d' for 2d approach
+        'popsize': 50,
+        'termination': None, # By default it runs for 1000 generations (or pass a pymoo termination instance)
+        'save_history': False, # set to True for later hypervolume calculations
+        'seed': None, # For reproducibility
+        'initialization': 'pizzuti',
+        'mutation': '',
+    }
+),
+    ComDetMultiCriteria(  # 2D MO approach
+    name='2d',
+    params = {
+        'mode': '2d', # '2d' for 2d approach
+        'popsize': 50,
+        'termination': None, # By default it runs for 1000 generations (or pass a pymoo termination instance)
+        'save_history': False, # set to True for later hypervolume calculations
+        'seed': None, # For reproducibility
+        'initialization': 'pizzuti',
+        'mutation': '',
+    }
+)
 ]
 
 print('Algos defined in %f s' % (time.time()-start))

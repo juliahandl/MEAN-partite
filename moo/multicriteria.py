@@ -20,6 +20,53 @@ import cdlib
 import skbio
 import code
 
+from pymoo.core.mutation import Mutation
+
+# Pizzuti mutation
+class PizMutation(Mutation):
+    def __init__(self):
+        super().__init__()
+
+    def _do(self, problem, X, **kwargs):
+
+        # uniform integer mutation
+        # for each design variable
+   
+        prob = 1.0 / len(X)
+        for i in range(len(X)):
+            for l in range(len(X[i])):
+                r = np.random.random()
+                if r < prob:
+                    v = np.random.randint(problem.xl[l]+1,problem.xu[l]+1)
+                    X[i, l] = v
+                    
+        return X
+    
+# Our mutation
+class HOCMutation(Mutation):
+    def __init__(self):
+        super().__init__()
+
+    def _do(self, problem, X, **kwargs):
+
+        
+        for i in range(len(X)):
+
+            # for each design variable
+            for l in range(len(X[i])):
+            
+                r = np.random.random()
+                    
+                # mutate with probability adjusted by node degree and node centrality
+                if r < problem.prob3[l]: 
+                    v = np.random.randint(problem.xl[l]+1,problem.xu[l]+1)
+                    X[i, l] = v
+     
+        return X
+
+
+
+
 class MultiCriteriaProblem(ElementwiseProblem):
     """
     Specializes a pymoo problem
@@ -58,6 +105,29 @@ class MultiCriteriaProblem(ElementwiseProblem):
         self.adj_list_ = self.graph_.get_adjlist() # Adjacency list
         self.graph_proj1_, self.graph_proj2_ = self.graph_.bipartite_projection(multiplicity=True) # Graph projecttion into two one-mode graphs
         # self.binary_links = np.full(self.n_var_, -1)
+        
+        
+        self.full_weights = self.graph_.edge_betweenness(directed=False)
+        self.weights = self.graph_.betweenness(directed=False) 
+        
+        # Information to adjust mutation probabilities by degree
+        self.freq1 = [x-1 if x == 0 else x for x in self.xu_ ]
+        self.freq1_total=sum(self.freq1) 
+       
+        # Information to adjust mutation probabilities by node centrality
+        self.freq2 = self.weights
+        self.freq2_total=sum(self.freq2)
+        
+        # Combination of information
+        self.freq3 = [a*b for a,b in zip(self.xu_,self.weights)]
+        self.freq3_total=sum(self.freq3)
+        
+        self.prob1 = [x / self.freq1_total for x in self.freq1]
+        self.prob2 = [x / self.freq2_total for x in self.freq2]
+        self.prob3 = [x / self.freq3_total for x in self.freq3]
+        
+        
+        
 
         super().__init__(n_var = self.n_var_,
                          n_obj = self.n_obj_,
@@ -103,11 +173,21 @@ class MultiCriteriaProblem(ElementwiseProblem):
 class ComDetMultiCriteria(CommunityDetector):
     def __init__(
         self, name="multicriteria",
-        params={'mode': '3d', 'popsize': 50, 'termination': None, 'save_history': True, 'seed': None},
+        params={'mode': '3d', 'popsize': 50, 'termination': None, 'save_history': True, 'seed': None, 'initialization': '', 'mutation':''},
         min_num_clusters=1, max_num_clusters=30
         ):
-
+        
         self.name_ = name
+        
+        def_params = {'mode': '3d', 'popsize': 50, 'termination': None, 'save_history': True, 'seed': None, 'initialization': '', 'mutation':''}
+        
+        ## Replace any missing parameters with their default value.
+        for k in def_params:
+            if params.get(k) == None:
+                params[k] = def_params[k]
+        
+        assert params['initialization'] in ['pizzuti',''], "Valid initialization options are: 'pizzuti', ''"
+        assert params['mutation'] in ['pizzuti','int_pm',''], "Valid mutation options are: 'pizzuti', 'int_pm', ''"
         
         super().__init__(self.name_)
         self.params_ = params
@@ -191,50 +271,69 @@ class ComDetMultiCriteria(CommunityDetector):
         n_var = self.problem_.n_var_
         binary_links = np.full(n_var, -1)
 
-        # The initial generation of individuals is built by computing the MST
-        # of the graph, then introducnig some diversity
-        # 1. Initial individual for the Evolutionary ALgorithm (based on the MST)
-        t = self.graph_.spanning_tree(weights = self.graph_.edge_betweenness()) # MST as a graph
-        mst = t.get_adjlist() # Adjacency list for the MST
-
         x = list(np.full(n_var, -1)) # Solution to evaluate
-
         adj_list = self.problem_.adj_list_ # Adjacency list of the original graph
-
-        temp_edges = []
-        for i in range(0,n_var):
-            if x[i] == -1:
-                x[i] = 0
-                for j in range(0,len(mst[i])):
-                    self.recursive_links(mst[i][j],i, x, temp_edges, binary_links, adj_list, mst) # translate MST into a genome
         
-        # 2. Duplicate the individual to make a poulation      
-        pop = np.tile(x, (popsize, 1)) # (identical genomes/solutions)
-        c = self.graph_.clusters()
-        ctr = 0
+        if self.params_['initialization'] == 'pizzuti':
+            print("Pizzuti version")
+            pop = np.tile(x, (popsize, 1)) #(identical genomes/solutions)
+            for ctr in range(0,popsize):
+                for i in range(0,n_var):
+                    pop[ctr][i] = np.random.randint(1,len(adj_list[i])+1) 
+        else:
+            # The initial generation of individuals is built by computing the MST
+            # of the graph, then introducnig some diversity
+            # 1. Initial individual for the Evolutionary ALgorithm (based on the MST)
+            t = self.graph_.spanning_tree(weights = self.graph_.edge_betweenness()) # MST as a graph
+            mst = t.get_adjlist() # Adjacency list for the MST
 
-        # 3. Diversity in the initial generation
-        for i in range(len(c),1+min(50,popsize,n_var)): #?
+            temp_edges = []
+            for i in range(0,n_var):
+                if x[i] == -1:
+                    x[i] = 0
+                    for j in range(0,len(mst[i])):
+                        self.recursive_links(mst[i][j],i, x, temp_edges, binary_links, adj_list, mst) # translate MST into a genome
+        
+            # 2. Duplicate the individual to make a poulation      
+            pop = np.tile(x, (popsize, 1)) # (identical genomes/solutions)
+            #c = self.graph_.clusters()
+            ctr = 0
 
-            # Use different greedy solutions for diversity
-            test = self.graph_.community_fastgreedy()
-            test = test.as_clustering(i)
+            k=2
+            test_hc = self.graph_.community_fastgreedy() #self.problem_.full_weights
+        
+            # 3. Diversity in the initial generation
+            #for i in range(len(c),1+min(50,popsize,n_var)): 
+            while k <= min(popsize,n_var):
 
-            test=test.membership
-            for j in range(0,n_var):
-                if pop[ctr][j] != 0 and test[adj_list[j][pop[ctr][j]-1]] != test[j]: # Removing edges crossing communities
-                    pop[ctr][j] = 0
-            ctr = ctr +1
+                # Use different greedy solutions for diversity
+                test_p = test_hc.as_clustering(i)
+
+                test=test_p.membership
+                for j in range(0,n_var):
+                    if pop[ctr][j] != 0 and test[adj_list[j][pop[ctr][j]-1]] != test[j]: 
+                        # Removing edges crossing communities if node degree > 1
+                        if self.problem_.xu_[j] > 1:
+                            pop[ctr][j] = 0
+                ctr = ctr +1
+                k = k+1
        
         self.pop_ = pop # Initial generation
 
     def define_algo(self):
+        # Determine mutation to use
+        mut = HOCMutation()
+        if self.params_['mutation']=='pizzuti':
+            mut = PizMutation()
+        if self.params_['mutation']=='int_pm':
+            mut = get_mutation("int_pm")
+            
         self.algorithm_ = NSGA2(
             pop_size=self.params_['popsize'],
             n_offsprings=self.params_['popsize'],
             sampling=self.pop_,
             crossover=get_crossover("int_ux", prob=0.3), # HParams to test
-            mutation=get_mutation("int_pm"), # HParams to test
+            mutation=mut, # HParams to test
             eliminate_duplicates=True,
         )
         # Popsize, number of generations more important that the above HParams
@@ -450,7 +549,7 @@ def test_community_detection(mode="3d"):
     it = datagen.generate_data()
     graph = next(it)
     mc = ComDetMultiCriteria(
-        params = {'mode': '3d', 'popsize': 50, 'termination': None, 'save_history': False, 'seed': None}
+        params = {'mode': '3d', 'popsize': 50, 'termination': None, 'save_history': False, 'seed': None, 'initialization': '', 'mutation': ''}
         )
     print(mc)
     results = mc.detect_communities(graph=graph).get_results()

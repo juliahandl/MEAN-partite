@@ -111,7 +111,7 @@ class MultiCriteriaProblem(ElementwiseProblem):
         self.weights = self.graph_.betweenness(directed=False) 
         
         # Information to adjust mutation probabilities by degree
-        self.freq1 = [x-1 if x == 0 else x for x in self.xu_ ]
+        self.freq1 = [x-1 if x == 1 else x for x in self.xu_ ]
         self.freq1_total=sum(self.freq1) 
        
         # Information to adjust mutation probabilities by node centrality
@@ -297,7 +297,7 @@ class ComDetMultiCriteria(CommunityDetector):
             # 2. Duplicate the individual to make a poulation      
             pop = np.tile(x, (popsize, 1)) # (identical genomes/solutions)
             #c = self.graph_.clusters()
-            ctr = 0
+            ctr = 1
 
             k=2
             test_hc = self.graph_.community_fastgreedy() #self.problem_.full_weights
@@ -307,7 +307,7 @@ class ComDetMultiCriteria(CommunityDetector):
             while k <= min(popsize,n_var):
 
                 # Use different greedy solutions for diversity
-                test_p = test_hc.as_clustering(i)
+                test_p = test_hc.as_clustering(k)
 
                 test=test_p.membership
                 for j in range(0,n_var):

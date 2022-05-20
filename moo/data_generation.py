@@ -25,6 +25,10 @@ class ExpConfig():
         self.shuffle=shuffle
         self.seed = 42 if seed is None else seed
         self.filename=filename
+        
+        ## Add a warning around the number of edges.
+        max_in_comm_edges = sum([s*t for s,t in zip(L,U)])
+        if NumEdges > max_in_comm_edges: print('The parameters specify more edges than the maximum within communities. Between community edge probability will be affected.')
     
     def __str__(self) -> str:
         return f'<ExpConfig: filename={self.filename}, L={self.L}, U={self.U}, NumNodes={self.NumNodes}, NumEdges={self.NumEdges}, BC={self.BC}, NumGraphs={self.NumGraphs}, shuffle={self.shuffle}, seed={self.seed}>'
@@ -124,6 +128,10 @@ class DataGenerator():
                 g_i_new.vs['VX'] = vT # Vertices
                 g_i_new.vs['name'] = vT # Vertices
                 g_i_new.vs['GT'] = groundtruth # Ground truth
+
+                ## Print gc stats for g_i_new.
+                print('Graph giant component has %d/%d nodes and %d/%d edges and %d/%d communities.' % (len(g_i_new.vs),len(vertices),len(g_i_new.es),self.expconfig.NumEdges,len(set(g_i_new.vs['GT'])),len(self.expconfig.L)))
+
                 ## Write g to file.
                 if filename:
                     try:
@@ -207,6 +215,10 @@ class DataGenerator():
                 g.vs['VX'] = topbottom # Vertices
                 g.vs['name'] = topbottom # Vertices
                 g.vs['GT'] = labels # Ground truth
+
+
+                ## Print gc stats for g_i_new.
+                print('Graph giant component has %d/%d nodes and %d/%d edges and %d/%d communities.' % (len(g.vs),len(vertices),len(g.es),self.expconfig.NumEdges,len(set(g.vs['GT'])),len(self.expconfig.L)))
 
                 ## Write g to file.
                 if filename:

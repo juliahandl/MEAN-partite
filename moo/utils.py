@@ -1,5 +1,6 @@
 import igraph
 import pandas as pd
+import numpy as np
 
 # Context to suppress verbose output of brim
 # From https://stackoverflow.com/a/2829036
@@ -53,7 +54,7 @@ def write_graph(g, f, format):
     g.write(f, format)
 
 
-def read_graph(f, format):
+def read_graph(f, format, NComms=None):
     """
     Reads a graph object g from a file or a stream f
     For format, see https://igraph.org/python/api/latest/igraph.Graph.html#Read
@@ -61,6 +62,10 @@ def read_graph(f, format):
     apppend_ext set to True of false to append the file extension
     """
     g = igraph.Graph.Read(f, format)
+    
+    if NComms:
+        print('Adding random ground truth with specified number of communities')
+        g.vs['GT'] = np.random.choice(list(range(NComms)),size=len(g.vs))
     return g
 
 ########################################################

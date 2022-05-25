@@ -58,8 +58,24 @@ class HOCMutation(Mutation):
                 r = np.random.random()
                     
                 # mutate with probability adjusted by node degree and node centrality
-                if r < problem.prob3[l]: 
+                if r < problem.prob2[l]: 
                     v = np.random.randint(problem.xl[l]+1,problem.xu[l]+1)
+                    
+                    # mutate to different edges with probability adjusted by edge centrality
+                    edges = problem.graph_.es.select(_source_in = [l])
+                        
+                    total = sum(edges["bs"])
+                    edge_p = np.full(len(problem.adj_list_[l]), -1)
+                    cp = 0
+                    rnd = np.random.uniform()
+                    for h in range(0,len(problem.adj_list_[l])):
+                            edge = edges.select(_source_in = [problem.adj_list_[l][h]])
+                            edge_p[h] = sum(edge["bs"])
+                            p = float(edge_p[h]) / float(total)
+                            cp = cp + p
+                            if rnd < cp:
+                                v = h+1
+                                break
                     X[i, l] = v
      
         return X
@@ -108,6 +124,7 @@ class MultiCriteriaProblem(ElementwiseProblem):
         
         
         self.full_weights = self.graph_.edge_betweenness(directed=False)
+        self.graph_.es["bs"] = self.full_weights
         self.weights = self.graph_.betweenness(directed=False) 
         
         # Information to adjust mutation probabilities by degree
@@ -332,7 +349,7 @@ class ComDetMultiCriteria(CommunityDetector):
             pop_size=self.params_['popsize'],
             n_offsprings=self.params_['popsize'],
             sampling=self.pop_,
-            crossover=get_crossover("int_ux", prob=0.3), # HParams to test
+            crossover=get_crossover("int_ux", prob=0.1), # HParams to test
             mutation=mut, # HParams to test
             eliminate_duplicates=True,
         )

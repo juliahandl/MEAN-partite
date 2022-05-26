@@ -96,13 +96,18 @@ class MultiCriteriaProblem(ElementwiseProblem):
         assert len(graph.vs), "graph must not be empty"
         self.graph_ = graph
 
-        assert mode == "3d" or mode == "2d", "mode needs to be either '3d' or '2d'"
+        assert mode == "3d" or mode == "2d" or mode == "4d", "mode needs to be either '4d' or '3d' or '2d'"
         self.mode_ = mode # 3d or 2d (see paper)
                 
         # Base class arguments: inferred from the graph or explicitly from the moo problem type (2d, 3d)
         # num design variables, num objectives, num constraints, lower/upper bounds for design variables
         self.n_var_ = len(self.graph_.vs) # Number of design variables (vertices)
-        self.n_obj_ = 3 if self.mode_=="3d" else 2  # Number of objectives
+        self.n_obj_ = 2 
+        if self.mode_=="3d":
+            self.n_obj_ = 3  
+        if self.mode_=="4d": 
+            self.n_obj = 4  # Number of objectives
+        
         self.n_constr_ = 0 # Number of constraints (no constraints)
         self.xl_ = np.zeros(self.n_var_) # Lower bound for design variables (0)
         self.xu_ = self.graph_.indegree()  # Upper bound for design variables
@@ -176,6 +181,14 @@ class MultiCriteriaProblem(ElementwiseProblem):
             modularity_score_1 = self.graph_proj1_.modularity(proj0_labels, weights=self.graph_proj1_.es['weight'])
             modularity_score_2 = self.graph_proj2_.modularity(proj1_labels, weights=self.graph_proj2_.es['weight'])
             out["F"] = [-modularity_score_1, -modularity_score_2, num_clusters]
+        elif self.mode_ == "4d":
+            proj0_labels=[m[i] for i in self.proj0_] # Community memberships for the 1st two-mode projected graph
+            proj1_labels=[m[i] for i in self.proj1_] # Community memberships for the 2nd two-mode projected graph
+            # Evaluate both projections with respect to those communities
+            modularity_score_1 = self.graph_proj1_.modularity(proj0_labels, weights=self.graph_proj1_.es['weight'])
+            modularity_score_2 = self.graph_proj2_.modularity(proj1_labels, weights=self.graph_proj2_.es['weight'])
+            modularity_score = self.graph_.modularity(m)
+            out["F"] = [-modularity_score_1, -modularity_score_2, -modularity_score, num_clusters]
         elif self.mode_ == "2d":
             modularity_score = self.graph_.modularity(m)
             out["F"] = [-modularity_score, num_clusters]
@@ -457,6 +470,10 @@ class ComDetMultiCriteria(CommunityDetector):
         if self.params_['mode'] == '3d':
             approx_ideal = np.array([-1.,-1., 1.])
             approx_nadir = np.array([1.,1., self.problem_.n_var_])
+            ref_point = approx_nadir + 1e-03
+        elif self.params_['mode'] == '4d':
+            approx_ideal = np.array([-1.,-1., -1,1.])
+            approx_nadir = np.array([1.,1., 1., self.problem_.n_var_])
             ref_point = approx_nadir + 1e-03
         else: # 2d
             approx_ideal = np.array([-1., 1.])

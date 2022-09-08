@@ -58,7 +58,7 @@ class HOCMutation(Mutation):
                 r = np.random.random()
                     
                 # mutate with probability adjusted by node degree and node centrality
-                if r < problem.prob2[l]: 
+                if r < problem.prob4[l]: 
                     v = np.random.randint(problem.xl[l]+1,problem.xu[l]+1)
                     
                     # mutate to different edges with probability adjusted by edge centrality
@@ -144,9 +144,14 @@ class MultiCriteriaProblem(ElementwiseProblem):
         self.freq3 = [a*b for a,b in zip(self.xu_,self.weights)]
         self.freq3_total=sum(self.freq3)
         
+        # Combination of information
+        self.freq4 = [b/a for a,b in zip(self.xu_,self.weights)]
+        self.freq4_total=sum(self.freq4)
+        
         self.prob1 = [x / self.freq1_total for x in self.freq1]
         self.prob2 = [x / self.freq2_total for x in self.freq2]
         self.prob3 = [x / self.freq3_total for x in self.freq3]
+        self.prob4 = [x / self.freq4_total for x in self.freq4]
         
         
         
